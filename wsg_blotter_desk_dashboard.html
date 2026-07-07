@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WSG Blotter Desk Dashboard - Dual Input</title>
+  <link rel="icon" href="/studio/static/ui/hsbc_icon.ico" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/highcharts@latest/highcharts.js"></script>
+  <script src="https://unpkg.com/highcharts@latest/modules/exporting.js"></script>
+  <script src="https://unpkg.com/highcharts@latest/modules/accessibility.js"></script>
+  <script src="https://unpkg.com/highcharts@latest/modules/heatmap.js"></script>
+  <script src="https://unpkg.com/highcharts@latest/modules/treemap.js"></script>
+  <style>
+    :root {
+      --hsbc-red: #db0011;
+      --ink: #111827;
+      --muted: #6b7280;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --line: #e5e7eb;
+      --good: #15803d;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --blue: #1d4ed8;
+      --soft-red: #fff1f2;
+      --soft-green: #f0fdf4;
+      --soft-amber: #fff7ed;
+      --soft-blue: #eff6ff;
+      --soft-slate: #f8fafc;
+      --shadow: 0 8px 24px rgba(17, 24, 39, .06);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    body { min-height: 100vh; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #ready-marker { display: none; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, .96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 4px 16px rgba(17, 24, 39, .05);
+    }
+    .topbar {
+      max-width: 1680px;
+      margin: 0 auto;
+      padding: 14px 18px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; gap: 14px; align-items: flex-start; }
+    .brand-mark {
+      width: 52px;
+      height: 52px;
+      position: relative;
+      flex: 0 0 auto;
+      background: var(--hsbc-red);
+      clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+      box-shadow: 0 6px 18px rgba(219, 0, 17, .24);
+    }
+    .brand-mark:before,
+    .brand-mark:after {
+      content: "";
+      position: absolute;
+      background: #fff;
+    }
+    .brand-mark:before { width: 18px; height: 52px; left: 17px; top: 0; transform: rotate(45deg); }
+    .brand-mark:after { width: 18px; height: 52px; left: 17px; top: 0; transform: rotate(-45deg); }
+    .brand h1 { margin: 0; font-size: 22px; line-height: 1.08; }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: 12px; max-width: 980px; }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pill {
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .pill.good { background: var(--soft-green); color: var(--good); border-color: #bbf7d0; }
+    .pill.warn { background: var(--soft-amber); color: var(--warn); border-color: #fed7aa; }
+    .pill.bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .pill.info { background: var(--soft-blue); color: var(--blue); border-color: #bfdbfe; }
+
+    main { max-width: 1680px; margin: 0 auto; padding: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    section { padding: 14px 16px; margin-bottom: 16px; }
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title:before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--hsbc-red);
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 160px;
+    }
+    .field.grow { flex: 1 1 280px; }
+    .field label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    input[type="file"],
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--hsbc-red);
+      box-shadow: 0 0 0 3px rgba(219, 0, 17, .08);
+      outline: none;
+    }
+    .btn {
+      border: none;
+      background: var(--hsbc-red);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(219, 0, 17, .22);
+    }
+    .btn.secondary {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .btn.ghost {
+      background: #f9fafb;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .mini { font-size: 12px; color: var(--muted); }
+    .good-note, .warn-note, .bad-note, .info-note {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .good-note { border: 1px solid #d1fae5; background: var(--soft-green); color: #166534; }
+    .warn-note { border: 1px solid #fed7aa; background: var(--soft-amber); color: #9a3412; }
+    .bad-note { border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; }
+    .info-note { border: 1px solid #bfdbfe; background: var(--soft-blue); color: #1e40af; }
+    .inline-code {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: #f9fafb;
+      border: 1px solid var(--line);
+      font-family: Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 1100px) { .hero-grid { grid-template-columns: 1fr; } }
+    .hero-panel {
+      background: linear-gradient(135deg, #ffffff 0%, #fff7f8 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .hero-panel h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.1; }
+    .hero-panel p { margin: 0; font-size: 13px; color: #4b5563; max-width: 900px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .badge {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      color: #374151;
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .hero-stats { grid-template-columns: 1fr; } }
+    .hero-stat {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .hero-stat .label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .hero-stat .value { font-size: 22px; font-weight: 700; margin-top: 5px; }
+    .hero-stat .sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+    .tabbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab.active { background: var(--hsbc-red); border-color: var(--hsbc-red); color: #fff; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    @media (max-width: 1300px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 760px) { .kpis { grid-template-columns: 1fr; } }
+    .kpi {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(17, 24, 39, .03);
+    }
+    .kpi .label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .kpi .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .delta-pos { color: var(--good) !important; }
+    .delta-neg { color: var(--bad) !important; }
+    .delta-flat { color: var(--muted) !important; }
+
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    th {
+      background: #f9fafb;
+      color: #374151;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:last-child td { border-bottom: none; }
+    .total-row td { font-weight: 700; background: #fff7f8; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
+    @media (max-width: 980px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .metric-grid { grid-template-columns: 1fr; } }
+    .metric-tile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--soft-slate);
+    }
+    .metric-tile .name { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
+    .metric-tile .amount { margin-top: 6px; font-size: 20px; font-weight: 700; }
+
+    .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media (max-width: 1000px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart {
+      min-height: 320px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+    }
+    .chart.short { min-height: 260px; }
+    .two-up { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media (max-width: 1000px) { .two-up { grid-template-columns: 1fr; } }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 1100px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .info-card h3 { margin: 0 0 8px; font-size: 14px; }
+    .info-card p, .info-card li { font-size: 12px; color: #4b5563; line-height: 1.45; }
+    .empty {
+      color: var(--muted);
+      padding: 20px;
+      text-align: center;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="ready-marker" data-status="initializing"></div>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>WSG Blotter Desk Dashboard - Dual Input</h1>
+          <p>Upload either the legacy blotter workbook or the cleaned flat workbook. Both inputs are normalised into the same reporting model. FX is included in totals by default.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="statusPill" class="pill warn">No dataset loaded</span>
+        <span id="parserPill" class="pill">Parser idle</span>
+        <span id="fxPill" class="pill info">Live USDHKD pending</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-grid">
+      <div class="hero-panel">
+        <h2>Blotter control board</h2>
+        <p>This version keeps the dual-input logic, uses a live Bloomberg-backed USDHKD feed for the TRS headline FX override by default, includes FX in totals by default, and expands the working views for headline, raw rebuild and variance analysis.</p>
+        <div class="badges">
+          <span class="badge">Dual input support</span>
+          <span class="badge">Headline, raw rebuild, variances</span>
+          <span class="badge">Live USDHKD default</span>
+          <span class="badge">FX included by default</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="label">Input Type</div>
+          <div id="heroInputType" class="value">-</div>
+          <div class="sub">Auto-detected on upload</div>
+        </div>
+        <div class="hero-stat">
+          <div class="label">Live USDHKD</div>
+          <div id="heroFx" class="value">7.8430</div>
+          <div id="heroFxMode" class="sub">Fallback</div>
+        </div>
+        <div class="hero-stat">
+          <div class="label">Total Policy</div>
+          <div id="heroTotalMode" class="value">Incl FX</div>
+          <div class="sub">Switchable control</div>
+        </div>
+        <div class="hero-stat">
+          <div class="label">Period</div>
+          <div id="heroPeriod" class="value">-</div>
+          <div id="datasetInfo" class="sub">Dataset: none</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="section-title">Load Workbook</div>
+      <div class="controls">
+        <div class="field grow">
+          <label for="fileInput">Upload workbook</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" />
+        </div>
+        <button id="btnUpload" class="btn">Parse Uploaded Workbook</button>
+        <button id="btnRefreshLiveFx" class="btn secondary">Refresh Live USDHKD</button>
+        <button id="btnRefresh" class="btn ghost">Refresh Dashboard</button>
+        <button id="btnExportMain" class="btn ghost">Export Main CSV</button>
+      </div>
+      <p id="loadNote" class="mini">The parser automatically detects the workbook structure. All logic rules are documented in the More Info tab.</p>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Controls</div>
+      <div class="controls">
+        <div class="field">
+          <label for="periodSelect">Reporting period</label>
+          <select id="periodSelect"></select>
+        </div>
+        <div class="field">
+          <label for="summaryMode">Summary mode</label>
+          <select id="summaryMode">
+            <option value="headline" selected>Headline</option>
+            <option value="raw">Raw Rebuild</option>
+            <option value="variance">Variance</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="trsFxMode">TRS FX source</label>
+          <select id="trsFxMode">
+            <option value="live" selected>Live USDHKD</option>
+            <option value="manual">Manual override</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="trsFxOverride">TRS Headline FX Override</label>
+          <input id="trsFxOverride" type="number" step="0.0001" value="7.8430" />
+        </div>
+        <div class="field">
+          <label for="includeFxFlag">Total policy</label>
+          <select id="includeFxFlag">
+            <option value="true" selected>Total incl FX</option>
+            <option value="false">Total ex FX</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div class="tabbar">
+      <button class="tab active" data-tab="main-summary">Main Summary</button>
+      <button class="tab" data-tab="structured-fi">Structured FI</button>
+      <button class="tab" data-tab="illiquid-repack">Illiquid / Repack</button>
+      <button class="tab" data-tab="collar">Collar</button>
+      <button class="tab" data-tab="equity-trs">Equity TRS</button>
+      <button class="tab" data-tab="reconciliation">Reconciliation</button>
+      <button class="tab" data-tab="unified-main">Unified Main Table</button>
+      <button class="tab" data-tab="input-data">Input Data</button>
+      <button class="tab" data-tab="qa">QA / Exceptions</button>
+      <button class="tab" data-tab="more-info">More Info</button>
+    </div>
+
+    <div id="main-summary" class="view active"></div>
+    <div id="structured-fi" class="view"></div>
+    <div id="illiquid-repack" class="view"></div>
+    <div id="collar" class="view"></div>
+    <div id="equity-trs" class="view"></div>
+    <div id="reconciliation" class="view"></div>
+    <div id="unified-main" class="view"></div>
+    <div id="input-data" class="view"></div>
+    <div id="qa" class="view"></div>
+    <div id="more-info" class="view"></div>
+  </main>
+
+  <script>
+    const SNAPSHOT_MODE = false;
+    const FX_PAIR = "USDHKD";
+    const FX_LOOKBACK_DAYS = 35;
+    const LIVE_FX_FALLBACK = 7.8430;
+    const charts = {};
+    const modules = {
+      summary: false,
+      structured: false,
+      illiquid: false,
+      collar: false,
+      trs: false,
+      reconciliation: false,
+      unified: false,
+      input: false,
+      qa: false,
+      info: false
+    };
+    const state = {
+      dataset: null,
+      payload: null,
+      selectedPeriodKey: null,
+      liveFxOverride: LIVE_FX_FALLBACK
+    };
+
+    function qs(id) { return document.getElementById(id); }
+    function setReady(status) {
+      const marker = qs("ready-marker");
+      if (marker) marker.dataset.status = status;
+    }
+    function resetModules() {
+      Object.keys(modules).forEach(k => { modules[k] = false; });
+      setReady("rendering");
+    }
+    function finishModule(name) {
+      modules[name] = true;
+      if (Object.values(modules).every(Boolean)) setReady("ready");
+    }
+    function destroyAllCharts() {
+      Object.keys(charts).forEach(id => {
+        if (charts[id] && typeof charts[id].destroy === "function") charts[id].destroy();
+        delete charts[id];
+      });
+    }
+    function escapeHtml(v) {
+      return String(v ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+    function renderChartFallback(id, message) {
+      const el = qs(id);
+      if (el) el.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+    }
+    function cleanText(v) {
+      if (v == null) return "";
+      return String(v).replace(/\s+/g, " ").trim();
+    }
+    function parseNumber(v) {
+      if (v == null || v === "") return null;
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      let s = String(v).trim();
+      if (!s) return null;
+      let neg = false;
+      if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+      s = s.replace(/[%,$\s]/g, "").replace(/−/g, "-");
+      if (!s || s === "-" || s === ".") return null;
+      const n = Number(s);
+      if (!Number.isFinite(n)) return null;
+      return neg ? -n : n;
+    }
+    function isoDate(v) {
+      if (v == null || v === "") return null;
+      if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+      if (typeof v === "number") {
+        const epoch = Date.UTC(1899, 11, 30);
+        const d = new Date(epoch + v * 86400000);
+        return d.toISOString().slice(0, 10);
+      }
+      const s = cleanText(v);
+      if (!s) return null;
+      const direct = new Date(s);
+      if (!Number.isNaN(direct.getTime())) return direct.toISOString().slice(0, 10);
+      const m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+      if (m) {
+        const year = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+        const month = Number(m[2]) - 1;
+        const day = Number(m[1]);
+        const d = new Date(Date.UTC(year, month, day));
+        if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      }
+      return null;
+    }
+    function parseDate(dateStr) {
+      if (!dateStr) return null;
+      const d = new Date(`${dateStr}T00:00:00Z`);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    function addYears(dateStr, deltaYears) {
+      const d = parseDate(dateStr);
+      if (!d) return null;
+      d.setUTCFullYear(d.getUTCFullYear() + deltaYears);
+      return d.toISOString().slice(0, 10);
+    }
+    function withinPeriod(dateStr, startStr, endStr) {
+      const d = parseDate(dateStr), s = parseDate(startStr), e = parseDate(endStr);
+      return !!(d && s && e && d >= s && d <= e);
+    }
+    function uid() {
+      return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    }
+    function sortBy(arr, fn, desc = false) {
+      return [...arr].sort((a, b) => {
+        const av = fn(a), bv = fn(b);
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av < bv) return desc ? 1 : -1;
+        if (av > bv) return desc ? -1 : 1;
+        return 0;
+      });
+    }
+    function groupBy(arr, fn) {
+      const m = new Map();
+      for (const item of arr) {
+        const k = fn(item);
+        if (!m.has(k)) m.set(k, []);
+        m.get(k).push(item);
+      }
+      return m;
+    }
+    function canonKey(k) {
+      return cleanText(k).toLowerCase().replace(/[^a-z0-9]+/g, "");
+    }
+    function pick(obj, keys) {
+      if (!obj) return null;
+      const byCanon = new Map(Object.keys(obj).map(k => [canonKey(k), obj[k]]));
+      for (const k of keys) {
+        if (Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
+        const hit = byCanon.get(canonKey(k));
+        if (hit != null && hit !== "") return hit;
+      }
+      return null;
+    }
+    function formatNumber(n, d = 0) {
+      if (n == null || Number.isNaN(Number(n))) return "-";
+      return Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+    }
+    function formatMoney(n, ccy = "USD", d = 0) {
+      if (n == null || Number.isNaN(Number(n))) return "-";
+      return `${ccy} ${formatNumber(n, d)}`;
+    }
+    function formatPct(n) {
+      if (n == null || Number.isNaN(Number(n))) return "-";
+      const v = Number(n) * 100;
+      const sign = v > 0 ? "+" : "";
+      return `${sign}${formatNumber(v, 1)}%`;
+    }
+    function deltaClass(n) {
+      if (n == null || Number.isNaN(Number(n)) || Number(n) === 0) return "delta-flat";
+      return Number(n) > 0 ? "delta-pos" : "delta-neg";
+    }
+    function setStatus(label, cls = "warn") {
+      const el = qs("statusPill");
+      if (el) { el.textContent = label; el.className = `pill ${cls}`; }
+    }
+    function setParser(label, cls = "") {
+      const el = qs("parserPill");
+      if (el) { el.textContent = label; el.className = `pill ${cls}`; }
+    }
+    function setFxPill(label, cls = "info") {
+      const el = qs("fxPill");
+      if (el) { el.textContent = label; el.className = `pill ${cls}`; }
+    }
+    function renderTableFromObjects(rows, columns, totalRow = null) {
+      const header = `<thead><tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr></thead>`;
+      const bodyRows = rows.map(r => `<tr>${columns.map(c => {
+        const raw = typeof c.value === "function" ? c.value(r) : r[c.value];
+        const val = c.format ? c.format(raw, r) : escapeHtml(raw ?? "");
+        return `<td>${val}</td>`;
+      }).join("")}</tr>`).join("");
+      const totalHtml = totalRow ? `<tr class="total-row">${columns.map(c => {
+        const raw = typeof c.value === "function" ? c.value(totalRow) : totalRow[c.value];
+        const val = c.format ? c.format(raw, totalRow) : escapeHtml(raw ?? "");
+        return `<td>${val}</td>`;
+      }).join("")}</tr>` : "";
+      return `<div class="table-wrap"><table>${header}<tbody>${bodyRows}${totalHtml}</tbody></table></div>`;
+    }
+    function downloadTextFile(filename, text) {
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function mainSummaryBucket(assetClass) {
+      if (assetClass === "Structured Rate") return "Structured Rate";
+      if (assetClass === "Structured Credit (Flow)") return "Structured Credit (Flow)";
+      if (assetClass === "Illiquid Credit" || assetClass === "Repack") return "Illiquid Credit + Repack";
+      if (assetClass === "Collar") return "Collar";
+      if (assetClass === "Equity TRS") return "Equity TRS";
+      if (assetClass === "FX") return "FX";
+      return "Other";
+    }
+    function flagsFor(assetClass) {
+      return {
+        flag_structured_rate: assetClass === "Structured Rate",
+        flag_structured_credit: assetClass === "Structured Credit (Flow)",
+        flag_illiquid_repack: assetClass === "Illiquid Credit" || assetClass === "Repack",
+        flag_collar: assetClass === "Collar",
+        flag_equity_trs: assetClass === "Equity TRS",
+        flag_fx: assetClass === "FX"
+      };
+    }
+    function normalizeAction(raw) {
+      const s = cleanText(raw).toLowerCase();
+      if (!s) return "New";
+      if (/unwind|close|terminate|cancel|matur/.test(s)) return "Unwind";
+      if (/roll|amend|modify/.test(s)) return "Roll";
+      if (/new|increase|open|add|buy|sell/.test(s)) return "New";
+      return cleanText(raw);
+    }
+    function signFromAction(action) {
+      if (/unwind|close|terminate|cancel|matur/i.test(action || "")) return -1;
+      if (/roll/i.test(action || "")) return 0;
+      return 1;
+    }
+    function makeFactRow(base) {
+      const assetClass = base.assetClass || "Other";
+      const sign = base.signMultiplier ?? signFromAction(base.actionType);
+      const notionalUsd = base.notionalUsd ?? null;
+      return {
+        id: uid(),
+        sourceKind: base.sourceKind || "unknown",
+        sourceSheet: base.sourceSheet || "",
+        sourceRecordId: base.sourceRecordId || "",
+        assetClass,
+        mainSummaryBucket: base.mainSummaryBucket || mainSummaryBucket(assetClass),
+        includeInSummary: base.includeInSummary !== false,
+        includeInTotalExFx: base.includeInTotalExFx !== false && assetClass !== "FX",
+        tradeDate: base.tradeDate || null,
+        yearInt: base.yearInt ?? (base.tradeDate ? parseDate(base.tradeDate)?.getUTCFullYear() : null),
+        actionType: base.actionType || "New",
+        signMultiplier: sign,
+        book: cleanText(base.book) || "Unassigned",
+        trader: cleanText(base.trader),
+        salesTeam: cleanText(base.salesTeam),
+        finalCustomer: cleanText(base.finalCustomer),
+        issuer: cleanText(base.issuer),
+        underlying: cleanText(base.underlying) || "Unknown",
+        isin: cleanText(base.isin),
+        currency: cleanText(base.currency) || "USD",
+        notionalLocal: base.notionalLocal ?? null,
+        notionalUsd,
+        signedNotionalUsd: base.signedNotionalUsd ?? (notionalUsd == null ? null : sign * notionalUsd),
+        mssRevenueUsd: base.mssRevenueUsd ?? base.gnbvUsd ?? 0,
+        bankRevenueUsd: base.bankRevenueUsd ?? base.mssRevenueUsd ?? base.gnbvUsd ?? 0,
+        gnbvUsd: base.gnbvUsd ?? base.mssRevenueUsd ?? 0,
+        pbFeeUsd: base.pbFeeUsd ?? 0,
+        headlineNotionalUsd: base.headlineNotionalUsd ?? notionalUsd ?? 0,
+        headlineRevenueUsd: base.headlineRevenueUsd ?? base.mssRevenueUsd ?? base.gnbvUsd ?? 0,
+        shareCount: base.shareCount ?? null,
+        signedShareCount: base.signedShareCount ?? null,
+        assetSpecificJson: base.assetSpecificJson || {},
+        raw: base.raw || null,
+        ...flagsFor(assetClass)
+      };
+    }
+
+    function collectRawSheetPreview(workbook) {
+      const out = {};
+      workbook.SheetNames.forEach(sheetName => {
+        const aoa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null, raw: true });
+        const colCount = aoa.reduce((m, r) => Math.max(m, r.length), 0);
+        out[sheetName] = {
+          aoa,
+          preview: aoa.slice(0, 60),
+          rowCount: aoa.length,
+          colCount
+        };
+      });
+      return out;
+    }
+    function detectWorkbookType(workbook) {
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null, raw: true });
+      const headers = rows.length ? Object.keys(rows[0]) : [];
+      const headerText = headers.map(canonKey).join("|");
+      const hasFlat = ["tier1producttype", "tradedate", "volume"].every(h => headerText.includes(h)) &&
+        (headerText.includes("pc") || headerText.includes("vagnbv") || headerText.includes("gnbv"));
+      return hasFlat ? "cleaned_flat" : "legacy";
+    }
+    function parseCommentMeta(comment) {
+      const meta = { raw: cleanText(comment), tokens: [] };
+      if (!meta.raw) return meta;
+      meta.tokens = meta.raw.split(/[|;\n]+/).map(x => cleanText(x)).filter(Boolean);
+      meta.tokens.forEach(part => {
+        const idx = part.search(/[:=]/);
+        if (idx > 0) {
+          const k = cleanText(part.slice(0, idx)).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+          meta[k] = cleanText(part.slice(idx + 1));
+        }
+      });
+      return meta;
+    }
+    function classifyCleanedAsset(row, meta) {
+      const t1 = cleanText(pick(row, ["Tier 1 Product Type"])).toLowerCase();
+      const t2 = cleanText(pick(row, ["Tier 2 Product Type"])).toLowerCase();
+      const t3 = cleanText(pick(row, ["Tier 3 Product Type"])).toLowerCase();
+      const a = `${t1} ${t2} ${t3} ${meta.raw || ""}`.toLowerCase();
+      if (a.includes("equity trs") || t2 === "trs" || a.includes("total return swap")) return "Equity TRS";
+      if (a.includes("collar")) return "Collar";
+      if (a.includes("repack")) return "Repack";
+      if (a.includes("illiquid")) return "Illiquid Credit";
+      if (a.includes("structured fi - fx") || t2 === "fx" || t3 === "fx") return "FX";
+      if (a.includes("structured credit") || a.includes("credit")) return "Structured Credit (Flow)";
+      if (a.includes("structured rate") || a.includes("rate")) return "Structured Rate";
+      if (t1 === "structured fi" && t2 === "fx") return "FX";
+      return "Other";
+    }
+    function buildPeriodsFromFactRows(factRows) {
+      const dated = factRows.filter(r => r.tradeDate);
+      if (!dated.length) {
+        const today = new Date().toISOString().slice(0, 10);
+        const y = Number(today.slice(0, 4));
+        return [{
+          key: `${y}-default`,
+          label: `${y} YTD through ${today.slice(5)}`,
+          year: y,
+          periodStart: `${y}-01-01`,
+          periodEnd: today,
+          priorPeriodStart: `${y - 1}-01-01`,
+          priorPeriodEnd: addYears(today, -1)
+        }];
+      }
+      const years = [...new Set(dated.map(r => parseDate(r.tradeDate).getUTCFullYear()))].sort((a, b) => b - a);
+      return years.map(y => {
+        const yearRows = dated.filter(r => parseDate(r.tradeDate).getUTCFullYear() === y);
+        const maxDate = sortBy(yearRows, r => r.tradeDate, true)[0]?.tradeDate || `${y}-12-31`;
+        const mmdd = maxDate.slice(5);
+        return {
+          key: `${y}-${mmdd}`,
+          label: `${y} YTD through ${mmdd}`,
+          year: y,
+          periodStart: `${y}-01-01`,
+          periodEnd: maxDate,
+          priorPeriodStart: `${y - 1}-01-01`,
+          priorPeriodEnd: `${y - 1}-${mmdd}`
+        };
+      });
+    }
+    function parseCleanedFlatWorkbook(workbook, filename) {
+      const qa = [];
+      const sheetName = workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null, raw: true });
+      const factRows = [];
+      rows.forEach((r, idx) => {
+        const meta = parseCommentMeta(pick(r, ["Comment", "Comments", "Notes"]));
+        const assetClass = classifyCleanedAsset(r, meta);
+        const actionRaw = meta.source_action || meta.action || pick(r, ["Action", "New/Unwind"]) || meta.tokens[0] || "";
+        const actionType = normalizeAction(actionRaw);
+        const sign = signFromAction(actionType);
+        const volume = parseNumber(pick(r, ["*$ Volume", "$ Volume", "$ TV", "Volume", "Notional USD", "Notional (USD)"])) || 0;
+        const pc = parseNumber(pick(r, ["*$ PC", "$ PC", "PC"])) || 0;
+        const va = parseNumber(pick(r, ["*$ VA/GNBV", "$ VA/GNBV", "VA/GNBV", "GNBV (USD)", "GNBV"])) || 0;
+        const pcSource = cleanText(meta.pc_source).toUpperCase();
+        let mssRevenue = va || pc || 0;
+        let pbFee = 0;
+        let bankRevenue = va || pc || 0;
+        if (pcSource === "PB_FEE_USD") {
+          pbFee = pc || 0;
+          mssRevenue = va || 0;
+          bankRevenue = mssRevenue + pbFee;
+        }
+        const tradeDate = isoDate(pick(r, ["*Trade Date", "Trade Date", "Date"]));
+        const sourceRecordId = cleanText(pick(r, ["*Trade ID", "Trade ID", "ISIN Code", "Reference number"])) || `flat-${idx + 2}`;
+        const strategyKey = assetClass === "Collar" ?
+          cleanText(pick(r, ["Strategy", "Underlying", "ISIN Code", "Issuer"])) || sourceRecordId : "";
+        if (!tradeDate) qa.push({
+          severity: "warn",
+          issueType: "missing_trade_date",
+          sourceSheet: sheetName,
+          sourceRecordId,
+          message: "Cleaned flat row has no parseable trade date."
+        });
+        if (assetClass === "Other") qa.push({
+          severity: "info",
+          issueType: "unclassified_asset",
+          sourceSheet: sheetName,
+          sourceRecordId,
+          message: "Cleaned flat row could not be mapped to a dashboard asset bucket."
+        });
+        factRows.push(makeFactRow({
+          sourceKind: "cleaned_flat",
+          sourceSheet: sheetName,
+          sourceRecordId,
+          assetClass,
+          tradeDate,
+          yearInt: tradeDate ? parseDate(tradeDate).getUTCFullYear() : null,
+          actionType,
+          signMultiplier: sign,
+          book: pick(r, ["Book", "Site Code", "Booking"]),
+          trader: pick(r, ["Trader"]),
+          salesTeam: pick(r, ["Sales Team", "Sales"]),
+          finalCustomer: pick(r, ["Final Customer", "*Legal Entity", "Legal Entity"]),
+          issuer: pick(r, ["Issuer", "*Legal Entity", "Legal Entity"]),
+          underlying: pick(r, ["Underlying", "Issuer", "ISIN Code"]) || strategyKey,
+          isin: pick(r, ["ISIN Code", "ISIN"]),
+          currency: pick(r, ["*Primary CCY", "Primary CCY", "Revenue CCY", "CCY"]) || "USD",
+          notionalUsd: volume,
+          signedNotionalUsd: sign * volume,
+          mssRevenueUsd: mssRevenue,
+          bankRevenueUsd: bankRevenue,
+          gnbvUsd: va,
+          pbFeeUsd: pbFee,
+          headlineNotionalUsd: sign > 0 ? volume : 0,
+          headlineRevenueUsd: mssRevenue,
+          assetSpecificJson: { commentMeta: meta, strategyKey },
+          raw: r
+        }));
+      });
+      return {
+        datasetId: uid(),
+        sourceKind: "cleaned_flat",
+        filename,
+        loadedAt: new Date().toISOString(),
+        sheetNames: workbook.SheetNames,
+        rawSheets: collectRawSheetPreview(workbook),
+        qaIssues: qa,
+        factRows,
+        periods: buildPeriodsFromFactRows(factRows),
+        workbookHeadlines: {
+          notes: [
+            "Cleaned flat workbook detected.",
+            "Headline mode is synthesised from the normalised flat input."
+          ]
+        },
+        parserNotes: [
+          "The cleaned flat file is classified primarily from tier columns and comment metadata.",
+          "Where comment metadata indicates pc_source=PB_FEE_USD, bank revenue is treated as MSS revenue plus PB fee.",
+          "Rows are normalised into the same fact model as the legacy workbook."
+        ]
+      };
+    }
+
+    function extractLegacyWorkbookHeadlines(rawSheets) {
+      const result = {
+        trsFxOverride: 7.843,
+        mainRows: [],
+        notes: [],
+        trsSummary: { notes: [] }
+      };
+      const con = rawSheets["Consolidate Sheet"]?.aoa || rawSheets["Consolidated Sheet"]?.aoa || [];
+      result.trsFxOverride = parseNumber(con?.[7]?.[0]) || result.trsFxOverride;
+      const bucketLabels = ["Structured Rate", "Structured Credit (Flow)", "Illiquid Credit + Repack", "Collar", "Equity TRS", "FX", "Total"];
+      con.forEach(row => {
+        const labelText = row.map(cleanText).join(" ");
+        const label = bucketLabels.find(x => labelText.toLowerCase().includes(x.toLowerCase().replace(" (flow)", "")));
+        const nums = row.map(parseNumber).filter(v => v != null);
+        if (label && nums.length >= 2) {
+          result.mainRows.push({
+            rowLabel: label,
+            currentNotionalUsd: nums[0] || 0,
+            currentRevenueUsd: nums[1] || 0,
+            priorNotionalUsd: nums[2] || 0,
+            priorRevenueUsd: nums[3] || 0,
+            notionalChangePct: nums[4] ?? null,
+            revenueChangePct: nums[5] ?? null
+          });
+        }
+      });
+      const trs = rawSheets["Equity TRS Summary"]?.aoa || [];
+      if (trs.length) {
+        const suspiciousGnbv2024 = parseNumber(trs?.[9]?.[2]);
+        const suspiciousBank2024 = parseNumber(trs?.[10]?.[2]);
+        if (suspiciousGnbv2024 && suspiciousBank2024 && Math.abs(suspiciousBank2024) < Math.abs(suspiciousGnbv2024)) {
+          result.trsSummary.notes.push("The legacy Equity TRS summary sheet appears to have bank revenue lower than MSS revenue; raw rebuild remains available for control.");
+        }
+      }
+      if (!result.mainRows.length) result.notes.push("No curated Consolidate Sheet headline rows were detected; headline mode will fall back to raw rebuild where required.");
+      return result;
+    }
+    function buildLegacyPeriods(rawSheets, factRows) {
+      const periods = [];
+      const con = rawSheets["Consolidate Sheet"]?.aoa || [];
+      con.forEach(row => {
+        const year = parseInt(row?.[9], 10);
+        const start = isoDate(row?.[14]);
+        const end = isoDate(row?.[15]);
+        if (year && start && end) {
+          periods.push({
+            key: `${year}-${end.slice(5)}`,
+            label: `${year} YTD through ${end.slice(5)}`,
+            year,
+            periodStart: start,
+            periodEnd: end,
+            priorPeriodStart: addYears(start, -1),
+            priorPeriodEnd: addYears(end, -1)
+          });
+        }
+      });
+      return periods.length ? periods : buildPeriodsFromFactRows(factRows);
+    }
+    function getRowsForSheet(workbook, wanted) {
+      const found = workbook.SheetNames.find(s => canonKey(s) === canonKey(wanted));
+      if (!found) return [];
+      return XLSX.utils.sheet_to_json(workbook.Sheets[found], { defval: null, raw: true });
+    }
+    function parseLegacyStructuredFI(rows, sheetName, qa) {
+      const out = [];
+      rows.forEach((r, idx) => {
+        const productTypeRaw = cleanText(pick(r, ["Product Type", "Tier 2 Product Type", "Product"]));
+        if (!productTypeRaw) return;
+        let assetClass = null;
+        if (/rate/i.test(productTypeRaw)) assetClass = "Structured Rate";
+        else if (/credit/i.test(productTypeRaw)) assetClass = "Structured Credit (Flow)";
+        else if (/\bfx\b/i.test(productTypeRaw)) assetClass = "FX";
+        if (!assetClass) {
+          qa.push({ severity: "info", issueType: "unknown_structured_fi_product", sourceSheet: sheetName, sourceRecordId: `${sheetName}-${idx + 2}`, message: "Unknown Structured FI product type encountered." });
+          return;
+        }
+        const volumeRaw = parseNumber(pick(r, ["Volume (MM) USD", "Notional (USD)", "Notional USD", "Volume"]));
+        const notionalUsd = volumeRaw == null ? 0 : (Math.abs(volumeRaw) < 100000 ? volumeRaw * 1000000 : volumeRaw);
+        const revenueUsd = parseNumber(pick(r, ["Total NNBV, GNBV in $", "GNBV (USD)", "Revenue (USD)", "MSS Revenue"])) || 0;
+        const tradeDate = isoDate(pick(r, ["First Trade Date", "Trade Date", "Date"]));
+        out.push(makeFactRow({
+          sourceKind: "legacy",
+          sourceSheet: sheetName,
+          sourceRecordId: cleanText(pick(r, ["Deal ID", "Trade ID", "Reference"])) || `${sheetName}-${idx + 2}`,
+          assetClass,
+          tradeDate,
+          yearInt: parseInt(pick(r, ["Year"]), 10) || (tradeDate ? parseDate(tradeDate).getUTCFullYear() : null),
+          actionType: normalizeAction(pick(r, ["Action", "New/Unwind", "Status"])),
+          book: pick(r, ["Book", "Booking"]),
+          finalCustomer: pick(r, ["Final Customer", "Client", "Customer"]),
+          issuer: pick(r, ["Issuer"]),
+          underlying: pick(r, ["Underlying", "Issuer", "Product Type"]) || assetClass,
+          currency: pick(r, ["CCY", "Currency"]) || "USD",
+          notionalUsd,
+          mssRevenueUsd: revenueUsd,
+          bankRevenueUsd: revenueUsd,
+          gnbvUsd: revenueUsd,
+          headlineNotionalUsd: notionalUsd,
+          headlineRevenueUsd: revenueUsd,
+          raw: r
+        }));
+      });
+      return out;
+    }
+    function parseLegacyIlliquidRepack(rows, sheetName, qa) {
+      const out = [];
+      rows.forEach((r, idx) => {
+        const rawType = cleanText(pick(r, ["Product Type", "Type", "Product"]));
+        if (!rawType) return;
+        let assetClass = null;
+        if (/repack/i.test(rawType)) assetClass = "Repack";
+        else if (/illiquid|credit/i.test(rawType)) assetClass = "Illiquid Credit";
+        if (!assetClass) {
+          qa.push({ severity: "info", issueType: "unknown_illiquid_repack_product", sourceSheet: sheetName, sourceRecordId: `${sheetName}-${idx + 2}`, message: "Unknown Illiquid / Repack product type encountered." });
+          return;
+        }
+        const notionalRaw = parseNumber(pick(r, ["Volume (MM) USD", "Notional (USD)", "Notional USD", "Volume"]));
+        const notionalUsd = notionalRaw == null ? 0 : (Math.abs(notionalRaw) < 100000 ? notionalRaw * 1000000 : notionalRaw);
+        const revenueUsd = parseNumber(pick(r, ["GNBV (USD)", "Revenue (USD)", "MSS Revenue"])) || 0;
+        const tradeDate = isoDate(pick(r, ["Trade Date", "First Trade Date", "Date"]));
+        out.push(makeFactRow({
+          sourceKind: "legacy",
+          sourceSheet: sheetName,
+          sourceRecordId: cleanText(pick(r, ["ISIN:Deal Name!SVCS No:", "ISIN", "Deal Name", "Trade ID"])) || `${sheetName}-${idx + 2}`,
+          assetClass,
+          tradeDate,
+          yearInt: parseInt(pick(r, ["Year"]), 10) || null,
+          actionType: normalizeAction(pick(r, ["Action", "Status"])),
+          book: pick(r, ["Booking", "Book"]),
+          finalCustomer: pick(r, ["Final Customer", "Client"]),
+          issuer: pick(r, ["Issuer"]),
+          underlying: pick(r, ["Issuer", "Underlying", "Deal Name"]) || assetClass,
+          notionalUsd,
+          mssRevenueUsd: revenueUsd,
+          bankRevenueUsd: revenueUsd,
+          gnbvUsd: revenueUsd,
+          headlineNotionalUsd: notionalUsd,
+          headlineRevenueUsd: revenueUsd,
+          raw: r
+        }));
+      });
+      return out;
+    }
+    function parseLegacyCollar(rows, sheetName, qa) {
+      const legs = [];
+      rows.forEach((r, idx) => {
+        const status = cleanText(pick(r, ["Status"]));
+        const product = cleanText(pick(r, ["Product", "Product Type"]));
+        if (!product && !status) return;
+        const optionType = /put/i.test(product) ? "Put" : /call/i.test(product) ? "Call" : "Option";
+        const tradeDate = isoDate(pick(r, ["Trade Date", "First Trade Date", "Date"]));
+        legs.push({
+          raw: r,
+          idx,
+          status,
+          optionType,
+          strategyKey: cleanText(pick(r, ["Strategy", "Underlying", "Reference", "ISIN"])) || `${sheetName}-${idx + 2}`,
+          actionType: normalizeAction(pick(r, ["Action", "New/Unwind", "Status"])),
+          tradeDate,
+          yearInt: parseInt(pick(r, ["Year"]), 10) || null,
+          finalCustomer: pick(r, ["FINAL CUSTOMER", "Final Customer", "Client"]),
+          book: pick(r, ["Book", "Booking"]),
+          underlying: pick(r, ["Underlying", "Share", "Issuer"]),
+          gnbvUsd: parseNumber(pick(r, ["Total GNBV (USD)", "GNBV (USD)", "MSS Revenue"])) || 0,
+          pbFeeUsd: parseNumber(pick(r, ["PB Fee (USD)", "PB Fee"])) || 0,
+          notionalUsd: parseNumber(pick(r, ["Notional Amount (USD)", "Notional (USD)", "Notional USD"])) || 0
+        });
+      });
+      const out = [];
+      for (const [strategyKey, group] of groupBy(legs, g => g.strategyKey).entries()) {
+        const callLegs = group.filter(g => g.optionType === "Call");
+        const putLegs = group.filter(g => g.optionType === "Put");
+        const action = cleanText(group.find(g => g.actionType)?.actionType || "New");
+        const sign = signFromAction(action);
+        const notionalUsd = Math.max(...group.map(g => g.notionalUsd || 0), 0);
+        const mssRevenueUsd = group.reduce((a, g) => a + (g.gnbvUsd || 0), 0);
+        const bankRevenueUsd = mssRevenueUsd + group.reduce((a, g) => a + (g.pbFeeUsd || 0), 0);
+        const pairingStatus = callLegs.length >= 1 && putLegs.length >= 1 ? "Paired" : "Incomplete";
+        const tradeDate = sortBy(group.filter(g => g.tradeDate), g => g.tradeDate, true)[0]?.tradeDate || null;
+        if (pairingStatus === "Incomplete") qa.push({ severity: "warn", issueType: "incomplete_collar_pair", sourceSheet: sheetName, sourceRecordId: strategyKey, message: "Collar strategy does not show both call and put legs." });
+        out.push(makeFactRow({
+          sourceKind: "legacy",
+          sourceSheet: sheetName,
+          sourceRecordId: strategyKey,
+          assetClass: "Collar",
+          tradeDate,
+          yearInt: parseInt(group.find(g => g.yearInt)?.yearInt, 10) || (tradeDate ? parseDate(tradeDate).getUTCFullYear() : null),
+          actionType: action,
+          signMultiplier: sign,
+          finalCustomer: group[0]?.finalCustomer,
+          book: group[0]?.book,
+          underlying: group[0]?.underlying || strategyKey,
+          notionalUsd,
+          signedNotionalUsd: sign * notionalUsd,
+          mssRevenueUsd,
+          bankRevenueUsd,
+          gnbvUsd: mssRevenueUsd,
+          pbFeeUsd: bankRevenueUsd - mssRevenueUsd,
+          headlineNotionalUsd: sign > 0 ? notionalUsd : 0,
+          headlineRevenueUsd: mssRevenueUsd,
+          assetSpecificJson: { strategyKey, pairingStatus, callLegs: callLegs.length, putLegs: putLegs.length },
+          raw: group.map(g => g.raw)
+        }));
+      }
+      return out;
+    }
+    function parseLegacyTRS(rows, sheetName, qa) {
+      const out = [];
+      rows.forEach((r, idx) => {
+        const status = cleanText(pick(r, ["Status"]));
+        const action = normalizeAction(pick(r, ["New/Unwind", "Action", "Status"]) || "New");
+        if (!status && !action && !pick(r, ["Reference number", "Reference Number"])) return;
+        const sign = signFromAction(action);
+        const referenceNumber = cleanText(pick(r, ["Reference number", "Reference Number", "Trade ID"]));
+        const notionalLocal = parseNumber(pick(r, ["Notional (HKD)", "Notional Local"])) || 0;
+        const notionalUsd = parseNumber(pick(r, ["Notional in USD", "Notional (USD)", "Notional USD"])) || 0;
+        const mssRevenueUsd = parseNumber(pick(r, ["MSS Revenue in USD", "MSS Revenue", "GNBV (USD)"])) || 0;
+        const bankRevenueUsd = parseNumber(pick(r, ["Total Bank Revenue in USD", "Bank Revenue in USD", "Bank Revenue"])) || mssRevenueUsd;
+        const shareCount = parseNumber(pick(r, ["No. of shares", "No, of shares", "Shares"])) || 0;
+        const tradeDate = isoDate(pick(r, ["Trade Date", "First Trade Date", "Date"]));
+        out.push(makeFactRow({
+          sourceKind: "legacy",
+          sourceSheet: sheetName,
+          sourceRecordId: referenceNumber || `trs-${idx + 2}`,
+          assetClass: "Equity TRS",
+          tradeDate,
+          yearInt: parseInt(pick(r, ["Year"]), 10) || null,
+          actionType: action,
+          signMultiplier: sign,
+          book: pick(r, ["Book"]),
+          finalCustomer: pick(r, ["Final Customer", "Client"]),
+          underlying: pick(r, ["Underlying", "Stock", "Ticker"]) || referenceNumber || "Unknown",
+          currency: "HKD",
+          notionalLocal,
+          notionalUsd,
+          signedNotionalUsd: sign * notionalUsd,
+          mssRevenueUsd,
+          bankRevenueUsd,
+          shareCount,
+          signedShareCount: sign * shareCount,
+          headlineNotionalUsd: /new/i.test(action) ? notionalUsd : 0,
+          headlineRevenueUsd: mssRevenueUsd,
+          raw: r
+        }));
+      });
+      return out;
+    }
+    function parseLegacyWorkbook(workbook, filename) {
+      const rawSheets = collectRawSheetPreview(workbook);
+      const qa = [];
+      const factRows = [];
+      const structuredSheets = ["Structured Rate + Credit", "Structured Rate+Credit", "Structured FI"];
+      // Dedupe by canonical sheet name: the list carries spelling variants that
+      // canonicalise to the same sheet and would double-count Structured FI rows.
+      const seenStructured = new Set();
+      structuredSheets.forEach(s => {
+        const found = workbook.SheetNames.find(x => canonKey(x) === canonKey(s));
+        if (found && !seenStructured.has(canonKey(found))) {
+          seenStructured.add(canonKey(found));
+          factRows.push(...parseLegacyStructuredFI(getRowsForSheet(workbook, s), found, qa));
+        }
+      });
+      if (workbook.SheetNames.some(x => canonKey(x) === canonKey("Illiquid Credit+Repack"))) {
+        factRows.push(...parseLegacyIlliquidRepack(getRowsForSheet(workbook, "Illiquid Credit+Repack"), "Illiquid Credit+Repack", qa));
+      }
+      if (workbook.SheetNames.some(x => canonKey(x) === canonKey("Collar Blotter"))) {
+        factRows.push(...parseLegacyCollar(getRowsForSheet(workbook, "Collar Blotter"), "Collar Blotter", qa));
+      }
+      if (workbook.SheetNames.some(x => canonKey(x) === canonKey("Equity TRS"))) {
+        factRows.push(...parseLegacyTRS(getRowsForSheet(workbook, "Equity TRS"), "Equity TRS", qa));
+      }
+      return {
+        datasetId: uid(),
+        sourceKind: "legacy",
+        filename,
+        loadedAt: new Date().toISOString(),
+        sheetNames: workbook.SheetNames,
+        rawSheets,
+        qaIssues: qa,
+        factRows,
+        periods: buildLegacyPeriods(rawSheets, factRows),
+        workbookHeadlines: extractLegacyWorkbookHeadlines(rawSheets),
+        parserNotes: [
+          "Legacy workbook detected.",
+          "Headline mode uses curated workbook summary tabs where available.",
+          "Where a curated headline is not available for the selected period, the dashboard falls back to the raw rebuild."
+        ]
+      };
+    }
+
+    function computeHeadlineNotional(row, trsFxOverride) {
+      if (row.assetClass === "Equity TRS") {
+        if (!/new$/i.test(row.actionType || "")) return 0;
+        return row.notionalLocal ? row.notionalLocal / trsFxOverride : (row.notionalUsd || 0);
+      }
+      if (row.assetClass === "Collar") {
+        return /^unwind$/i.test(row.actionType || "") ? 0 : (row.notionalUsd || 0);
+      }
+      return row.headlineNotionalUsd ?? row.notionalUsd ?? 0;
+    }
+    function computeHeadlineRevenue(row) {
+      return row.headlineRevenueUsd ?? row.mssRevenueUsd ?? row.gnbvUsd ?? 0;
+    }
+    function totalizeRows(arr) {
+      const currentNotionalUsd = arr.reduce((a, r) => a + (r.currentNotionalUsd || 0), 0);
+      const currentRevenueUsd = arr.reduce((a, r) => a + (r.currentRevenueUsd || 0), 0);
+      const priorNotionalUsd = arr.reduce((a, r) => a + (r.priorNotionalUsd || 0), 0);
+      const priorRevenueUsd = arr.reduce((a, r) => a + (r.priorRevenueUsd || 0), 0);
+      return {
+        currentNotionalUsd,
+        currentRevenueUsd,
+        priorNotionalUsd,
+        priorRevenueUsd,
+        notionalChangePct: priorNotionalUsd ? (currentNotionalUsd - priorNotionalUsd) / Math.abs(priorNotionalUsd) : null,
+        revenueChangePct: priorRevenueUsd ? (currentRevenueUsd - priorRevenueUsd) / Math.abs(priorRevenueUsd) : null
+      };
+    }
+    function buildRawRebuild(dataset, period, opts) {
+      if (!period) {
+        return {
+          currentRows: [], priorRows: [], bucketRows: [], totalExFx: totalizeRows([]), totalInclFx: totalizeRows([]),
+          structuredByBook: [], illiquidByType: [], collarStrategies: [], collarByUnderlying: [], trsEvents: [], trsByUnderlying: []
+        };
+      }
+      const rows = dataset.factRows.filter(r => r.includeInSummary !== false);
+      const currentRows = rows.filter(r => withinPeriod(r.tradeDate, period.periodStart, period.periodEnd));
+      const priorRows = rows.filter(r => withinPeriod(r.tradeDate, period.priorPeriodStart, period.priorPeriodEnd));
+      const buckets = ["Structured Rate", "Structured Credit (Flow)", "Illiquid Credit + Repack", "Collar", "Equity TRS", "FX", "Other"];
+      const bucketRows = buckets.map(label => {
+        const cur = currentRows.filter(r => r.mainSummaryBucket === label);
+        const prv = priorRows.filter(r => r.mainSummaryBucket === label);
+        const cN = cur.reduce((a, r) => a + computeHeadlineNotional(r, opts.trsFxOverride), 0);
+        const cR = cur.reduce((a, r) => a + computeHeadlineRevenue(r), 0);
+        const pN = prv.reduce((a, r) => a + computeHeadlineNotional(r, opts.trsFxOverride), 0);
+        const pR = prv.reduce((a, r) => a + computeHeadlineRevenue(r), 0);
+        return {
+          rowLabel: label,
+          currentNotionalUsd: cN,
+          currentRevenueUsd: cR,
+          priorNotionalUsd: pN,
+          priorRevenueUsd: pR,
+          notionalChangePct: pN ? (cN - pN) / Math.abs(pN) : null,
+          revenueChangePct: pR ? (cR - pR) / Math.abs(pR) : null,
+          currentCount: cur.length,
+          priorCount: prv.length
+        };
+      }).filter(r => r.currentCount || r.priorCount || r.rowLabel !== "Other");
+      const totalExFx = totalizeRows(bucketRows.filter(r => r.rowLabel !== "FX"));
+      const totalInclFx = totalizeRows(bucketRows);
+      const structuredByBook = Array.from(groupBy(currentRows.filter(r => ["Structured Rate", "Structured Credit (Flow)", "FX"].includes(r.assetClass)), r => `${r.assetClass}||${r.book || "Unassigned"}`).entries()).map(([k, vals]) => {
+        const [assetClass, book] = k.split("||");
+        return {
+          assetClass,
+          book,
+          notionalUsd: vals.reduce((a, r) => a + computeHeadlineNotional(r, opts.trsFxOverride), 0),
+          revenueUsd: vals.reduce((a, r) => a + computeHeadlineRevenue(r), 0),
+          rows: vals.length
+        };
+      });
+      const illiquidByType = Array.from(groupBy(currentRows.filter(r => ["Illiquid Credit", "Repack"].includes(r.assetClass)), r => `${r.assetClass}||${r.book || "Unassigned"}`).entries()).map(([k, vals]) => {
+        const [assetClass, book] = k.split("||");
+        return {
+          assetClass,
+          book,
+          notionalUsd: vals.reduce((a, r) => a + (r.notionalUsd || 0), 0),
+          revenueUsd: vals.reduce((a, r) => a + computeHeadlineRevenue(r), 0),
+          rows: vals.length
+        };
+      });
+      const collarByUnderlying = Array.from(groupBy(currentRows.filter(r => r.assetClass === "Collar"), r => r.underlying || "Unknown").entries()).map(([underlying, vals]) => ({
+        underlying,
+        strategies: vals.length,
+        newNotionalUsd: vals.reduce((a, r) => a + computeHeadlineNotional(r, opts.trsFxOverride), 0),
+        mssRevenueUsd: vals.reduce((a, r) => a + (r.mssRevenueUsd || 0), 0),
+        bankRevenueUsd: vals.reduce((a, r) => a + (r.bankRevenueUsd || 0), 0),
+        incomplete: vals.filter(v => (v.assetSpecificJson?.pairingStatus || "").toLowerCase() === "incomplete").length
+      }));
+      const trsByUnderlying = Array.from(groupBy(currentRows.filter(r => r.assetClass === "Equity TRS"), r => r.underlying || "Unknown").entries()).map(([underlying, vals]) => ({
+        underlying,
+        rows: vals.length,
+        headlineNewNotionalUsd: vals.reduce((a, r) => a + computeHeadlineNotional(r, opts.trsFxOverride), 0),
+        grossMssRevenueUsd: vals.reduce((a, r) => a + (r.mssRevenueUsd || 0), 0),
+        grossBankRevenueUsd: vals.reduce((a, r) => a + (r.bankRevenueUsd || 0), 0),
+        netExposureUsd: vals.reduce((a, r) => a + ((r.notionalUsd || 0) * (r.signMultiplier || 0)), 0)
+      }));
+      return {
+        currentRows,
+        priorRows,
+        bucketRows,
+        totalExFx,
+        totalInclFx,
+        structuredByBook: sortBy(structuredByBook, x => x.revenueUsd, true),
+        illiquidByType: sortBy(illiquidByType, x => x.revenueUsd, true),
+        collarStrategies: sortBy(currentRows.filter(r => r.assetClass === "Collar"), x => x.tradeDate, true),
+        collarByUnderlying: sortBy(collarByUnderlying, x => x.bankRevenueUsd, true),
+        trsEvents: sortBy(currentRows.filter(r => r.assetClass === "Equity TRS"), x => x.tradeDate, true),
+        trsByUnderlying: sortBy(trsByUnderlying, x => x.grossBankRevenueUsd, true)
+      };
+    }
+    function buildHeadlineSummary(dataset, period, rebuild) {
+      if (dataset.sourceKind === "cleaned_flat") {
+        return {
+          available: true,
+          synthetic: true,
+          bucketRows: rebuild.bucketRows,
+          totalExFx: rebuild.totalExFx,
+          totalInclFx: rebuild.totalInclFx,
+          notes: dataset.workbookHeadlines.notes || []
+        };
+      }
+      const rows = dataset.workbookHeadlines.mainRows || [];
+      const latestYear = Math.max(...(dataset.periods || []).map(p => p.year || 0));
+      const available = period && period.year === latestYear && rows.length > 0;
+      if (!available) {
+        return { available: false, synthetic: false, bucketRows: [], totalExFx: null, totalInclFx: null, notes: dataset.workbookHeadlines.notes || [] };
+      }
+      const totalRow = rows.find(r => r.rowLabel === "Total");
+      const fxRow = rows.find(r => r.rowLabel === "FX");
+      const bucketRows = rows.filter(r => r.rowLabel !== "Total").map(r => ({ ...r }));
+      const totalExFx = totalRow ? {
+        currentNotionalUsd: totalRow.currentNotionalUsd,
+        currentRevenueUsd: totalRow.currentRevenueUsd,
+        priorNotionalUsd: totalRow.priorNotionalUsd,
+        priorRevenueUsd: totalRow.priorRevenueUsd,
+        notionalChangePct: totalRow.notionalChangePct,
+        revenueChangePct: totalRow.revenueChangePct
+      } : totalizeRows(bucketRows.filter(r => r.rowLabel !== "FX"));
+      const totalInclFx = totalExFx ? {
+        currentNotionalUsd: totalExFx.currentNotionalUsd + (fxRow?.currentNotionalUsd || 0),
+        currentRevenueUsd: totalExFx.currentRevenueUsd + (fxRow?.currentRevenueUsd || 0),
+        priorNotionalUsd: totalExFx.priorNotionalUsd + (fxRow?.priorNotionalUsd || 0),
+        priorRevenueUsd: totalExFx.priorRevenueUsd + (fxRow?.priorRevenueUsd || 0)
+      } : totalizeRows(bucketRows);
+      totalInclFx.notionalChangePct = totalInclFx.priorNotionalUsd ? (totalInclFx.currentNotionalUsd - totalInclFx.priorNotionalUsd) / Math.abs(totalInclFx.priorNotionalUsd) : null;
+      totalInclFx.revenueChangePct = totalInclFx.priorRevenueUsd ? (totalInclFx.currentRevenueUsd - totalInclFx.priorRevenueUsd) / Math.abs(totalInclFx.priorRevenueUsd) : null;
+      return { available: true, synthetic: false, bucketRows, totalExFx, totalInclFx, notes: [] };
+    }
+    function buildVariance(headline, rebuild) {
+      const labels = ["Structured Rate", "Structured Credit (Flow)", "Illiquid Credit + Repack", "Collar", "Equity TRS", "FX", "Total incl FX"];
+      return labels.map(label => {
+        const h = label === "Total incl FX" ? headline.totalInclFx : headline.bucketRows.find(r => r.rowLabel === label);
+        const r = label === "Total incl FX" ? rebuild.totalInclFx : rebuild.bucketRows.find(x => x.rowLabel === label);
+        if (!h || !r) return null;
+        return {
+          rowLabel: label,
+          headlineCurrentNotional: h.currentNotionalUsd || 0,
+          rebuildCurrentNotional: r.currentNotionalUsd || 0,
+          notionalVariance: (r.currentNotionalUsd || 0) - (h.currentNotionalUsd || 0),
+          headlineCurrentRevenue: h.currentRevenueUsd || 0,
+          rebuildCurrentRevenue: r.currentRevenueUsd || 0,
+          revenueVariance: (r.currentRevenueUsd || 0) - (h.currentRevenueUsd || 0)
+        };
+      }).filter(Boolean);
+    }
+    function getCurrentPeriod() {
+      if (!state.dataset) return null;
+      return state.dataset.periods.find(p => p.key === state.selectedPeriodKey) || state.dataset.periods[0] || null;
+    }
+    function currentOverrideValue() {
+      const mode = qs("trsFxMode").value;
+      if (mode === "live") return state.liveFxOverride || LIVE_FX_FALLBACK;
+      return parseNumber(qs("trsFxOverride").value) || LIVE_FX_FALLBACK;
+    }
+    function buildPayload() {
+      if (!state.dataset) {
+        state.payload = null;
+        return;
+      }
+      const period = getCurrentPeriod();
+      const opts = {
+        trsFxOverride: currentOverrideValue(),
+        includeFx: String(qs("includeFxFlag").value) === "true"
+      };
+      const rebuild = buildRawRebuild(state.dataset, period, opts);
+      const headline = buildHeadlineSummary(state.dataset, period, rebuild);
+      const variance = headline.available ? buildVariance(headline, rebuild) : [];
+      state.payload = {
+        period,
+        opts,
+        rebuild,
+        headline,
+        variance,
+        mode: qs("summaryMode").value
+      };
+    }
+    function activeSummaryRows() {
+      const p = state.payload;
+      if (!p) return [];
+      if (p.mode === "variance") {
+        return p.variance.map(v => ({
+          rowLabel: v.rowLabel,
+          currentNotionalUsd: v.notionalVariance,
+          currentRevenueUsd: v.revenueVariance,
+          priorNotionalUsd: null,
+          priorRevenueUsd: null,
+          notionalChangePct: null,
+          revenueChangePct: null
+        }));
+      }
+      if (p.mode === "headline" && p.headline.available) return p.headline.bucketRows;
+      return p.rebuild.bucketRows;
+    }
+    function activeTotal() {
+      const p = state.payload;
+      if (!p) return null;
+      const includeFx = String(qs("includeFxFlag").value) === "true";
+      if (p.mode === "variance") {
+        const t = p.variance.find(r => r.rowLabel === "Total incl FX");
+        return {
+          rowLabel: "Total incl FX",
+          currentNotionalUsd: t?.notionalVariance || 0,
+          currentRevenueUsd: t?.revenueVariance || 0,
+          priorNotionalUsd: null,
+          priorRevenueUsd: null,
+          notionalChangePct: null,
+          revenueChangePct: null
+        };
+      }
+      if (p.mode === "headline" && p.headline.available) return includeFx ? p.headline.totalInclFx : p.headline.totalExFx;
+      return includeFx ? p.rebuild.totalInclFx : p.rebuild.totalExFx;
+    }
+    function populateControls() {
+      const periods = state.dataset?.periods || [];
+      qs("periodSelect").innerHTML = periods.map(p => `<option value="${escapeHtml(p.key)}" ${p.key === state.selectedPeriodKey ? "selected" : ""}>${escapeHtml(p.label)}</option>`).join("");
+      if (!state.selectedPeriodKey && periods.length) state.selectedPeriodKey = periods[0].key;
+      if (state.dataset?.workbookHeadlines?.trsFxOverride) {
+        qs("trsFxOverride").value = state.dataset.workbookHeadlines.trsFxOverride.toFixed(4);
+      }
+      qs("heroInputType").textContent = state.dataset ? (state.dataset.sourceKind === "cleaned_flat" ? "Cleaned flat" : "Legacy") : "-";
+    }
+    function monthKey(dateStr) {
+      const d = parseDate(dateStr);
+      if (!d) return null;
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    }
+    function monthLabel(key) {
+      const [y, m] = key.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-US", { month: "short", year: "2-digit" });
+    }
+    function buildMonthlySeries(rows, valueFn) {
+      const map = new Map();
+      rows.forEach(r => {
+        const k = monthKey(r.tradeDate);
+        if (!k) return;
+        map.set(k, (map.get(k) || 0) + (valueFn(r) || 0));
+      });
+      const keys = [...map.keys()].sort();
+      return { categories: keys.map(monthLabel), values: keys.map(k => map.get(k)) };
+    }
+    function buildCountMonthlySeries(rows) {
+      const map = new Map();
+      rows.forEach(r => {
+        const k = monthKey(r.tradeDate);
+        if (!k) return;
+        map.set(k, (map.get(k) || 0) + 1);
+      });
+      const keys = [...map.keys()].sort();
+      return { categories: keys.map(monthLabel), values: keys.map(k => map.get(k)) };
+    }
+    function hcBase(type) {
+      return {
+        chart: { type, style: { fontFamily: "Arial, Helvetica, sans-serif" }, backgroundColor: "transparent" },
+        title: { text: null },
+        credits: { enabled: false },
+        exporting: { enabled: true },
+        legend: { itemStyle: { fontSize: "11px" } },
+        xAxis: { labels: { style: { fontSize: "11px" } } },
+        yAxis: { labels: { style: { fontSize: "11px" } }, title: { text: null } },
+        tooltip: { shared: true }
+      };
+    }
+    function safeChart(id, options) {
+      if (!window.Highcharts) {
+        renderChartFallback(id, "Highcharts is not available. Check the enterprise/CDN connection.");
+        return;
+      }
+      if (charts[id]) charts[id].destroy();
+      charts[id] = Highcharts.chart(id, options);
+    }
+
+    function renderMainSummary() {
+      const root = qs("main-summary");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to build the main summary.</div></section>`;
+          finishModule("summary");
+          return;
+        }
+        const p = state.payload;
+        const total = activeTotal();
+        const rows = activeSummaryRows();
+        const includeFx = String(qs("includeFxFlag").value) === "true";
+        const summaryNote = state.dataset.sourceKind === "cleaned_flat"
+          ? "The cleaned flat input has been normalised into the same analytical structure as the legacy workbook. Headline mode is synthesised from the standardised data."
+          : p.headline.available
+            ? "Headline mode is using the curated workbook summary where available. Raw rebuild and variance remain available for control and QA."
+            : "A curated workbook headline is not available for the selected legacy period, so the dashboard is using the raw rebuild.";
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Main Summary</div>
+            <div class="${state.dataset.sourceKind === "cleaned_flat" || p.headline.available ? "good-note" : "warn-note"}">
+              ${escapeHtml(summaryNote)}
+              <span class="inline-code">${escapeHtml(state.dataset.sourceKind === "cleaned_flat" ? "cleaned flat workbook" : "legacy workbook")}</span>
+              <span class="inline-code">${escapeHtml(includeFx ? "including FX" : "excluding FX")}</span>
+            </div>
+            <div class="kpis" style="margin-top:12px">
+              <div class="kpi"><div class="label">Current notional</div><div class="value">${formatMoney(total?.currentNotionalUsd, "USD", 0)}</div><div class="sub ${deltaClass(total?.notionalChangePct)}">${p.mode === "variance" ? "Raw minus headline" : `${formatPct(total?.notionalChangePct)} vs prior`}</div></div>
+              <div class="kpi"><div class="label">Current revenue</div><div class="value">${formatMoney(total?.currentRevenueUsd, "USD", 0)}</div><div class="sub ${deltaClass(total?.revenueChangePct)}">${p.mode === "variance" ? "Raw minus headline" : `${formatPct(total?.revenueChangePct)} vs prior`}</div></div>
+              <div class="kpi"><div class="label">Prior notional</div><div class="value">${formatMoney(total?.priorNotionalUsd, "USD", 0)}</div><div class="sub">Prior comparable period</div></div>
+              <div class="kpi"><div class="label">Prior revenue</div><div class="value">${formatMoney(total?.priorRevenueUsd, "USD", 0)}</div><div class="sub">Prior comparable period</div></div>
+              <div class="kpi"><div class="label">TRS FX Override</div><div class="value">${Number(p.opts.trsFxOverride).toFixed(4)}</div><div class="sub">${escapeHtml(qs("trsFxMode").value === "live" ? "Live USDHKD feed" : "Manual override")}</div></div>
+              <div class="kpi"><div class="label">Input Rows</div><div class="value">${formatNumber(state.dataset.factRows.length, 0)}</div><div class="sub">${escapeHtml(state.dataset.filename)}</div></div>
+            </div>
+          </section>
+          <section class="card">
+            <div class="section-title">Summary Table</div>
+            ${renderTableFromObjects(rows, [
+              { label: "Bucket", value: "rowLabel" },
+              { label: "Current Notional", value: "currentNotionalUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Current Revenue", value: "currentRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Prior Notional", value: "priorNotionalUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Prior Revenue", value: "priorRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Delta Notional", value: "notionalChangePct", format: v => `<span class="${deltaClass(v)}">${formatPct(v)}</span>` },
+              { label: "Delta Revenue", value: "revenueChangePct", format: v => `<span class="${deltaClass(v)}">${formatPct(v)}</span>` },
+              { label: "Rows", value: "currentCount", format: v => formatNumber(v || 0, 0) }
+            ], { rowLabel: includeFx ? "Total incl FX" : "Total ex FX", ...total })}
+          </section>
+          <section class="card">
+            <div class="section-title">Charts</div>
+            <div class="chart-grid">
+              <div id="mainRevenueChart" class="chart"></div>
+              <div id="mainNotionalChart" class="chart"></div>
+              <div id="mainTicketTrendChart" class="chart short"></div>
+              <div id="mainMixChart" class="chart short"></div>
+            </div>
+          </section>`;
+        const currentMonthly = buildMonthlySeries(p.rebuild.currentRows, computeHeadlineRevenue);
+        safeChart("mainRevenueChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => r.rowLabel) }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "Current revenue", color: "#db0011", data: rows.map(r => r.currentRevenueUsd || 0) }] });
+        safeChart("mainNotionalChart", { ...hcBase("bar"), xAxis: { categories: rows.map(r => r.rowLabel) }, yAxis: { title: { text: "Notional (USD)" } }, series: [{ name: "Current notional", color: "#374151", data: rows.map(r => r.currentNotionalUsd || 0) }] });
+        safeChart("mainTicketTrendChart", { ...hcBase("line"), xAxis: { categories: currentMonthly.categories }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "Revenue", color: "#db0011", data: currentMonthly.values }] });
+        safeChart("mainMixChart", { ...hcBase("pie"), tooltip: { pointFormat: "<b>{point.y:,.0f}</b>" }, series: [{ name: "Rows", data: rows.map(r => ({ name: r.rowLabel, y: r.currentCount || 0 })) }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Main summary failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("summary");
+    }
+    function renderStructuredFI() {
+      const root = qs("structured-fi");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect Structured FI.</div></section>`;
+          finishModule("structured");
+          return;
+        }
+        const sfiRows = state.payload.rebuild.structuredByBook;
+        const sumByBucket = state.payload.rebuild.bucketRows.filter(r => ["Structured Rate", "Structured Credit (Flow)", "FX"].includes(r.rowLabel));
+        const fxRow = sumByBucket.find(r => r.rowLabel === "FX");
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Structured FI</div>
+            <div class="info-note">Structured FI combines structured rate, structured credit and FX. FX is included in the default total policy.</div>
+            <div class="metric-grid">
+              <div class="metric-tile"><div class="name">Current FX revenue</div><div class="amount">${formatMoney(fxRow?.currentRevenueUsd || 0, "USD", 0)}</div></div>
+              <div class="metric-tile"><div class="name">Current FX notional</div><div class="amount">${formatMoney(fxRow?.currentNotionalUsd || 0, "USD", 0)}</div></div>
+              <div class="metric-tile"><div class="name">Books</div><div class="amount">${formatNumber(new Set(sfiRows.map(r => r.book)).size, 0)}</div></div>
+              <div class="metric-tile"><div class="name">Rows</div><div class="amount">${formatNumber(sfiRows.reduce((a, r) => a + r.rows, 0), 0)}</div></div>
+            </div>
+            ${renderTableFromObjects(sfiRows, [
+              { label: "Asset", value: "assetClass" },
+              { label: "Book", value: "book" },
+              { label: "Notional", value: "notionalUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Revenue", value: "revenueUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Rows", value: "rows" }
+            ])}
+          </section>
+          <section class="card"><div class="section-title">Structured FI Charts</div><div class="chart-grid"><div id="sfiRevenueChart" class="chart"></div><div id="sfiNotionalChart" class="chart"></div><div id="sfiHeatmapChart" class="chart"></div></div></section>`;
+        safeChart("sfiRevenueChart", { ...hcBase("column"), xAxis: { categories: sfiRows.map(r => `${r.assetClass} | ${r.book}`) }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "Revenue", color: "#db0011", data: sfiRows.map(r => r.revenueUsd || 0) }] });
+        safeChart("sfiNotionalChart", { ...hcBase("bar"), xAxis: { categories: sfiRows.map(r => `${r.assetClass} | ${r.book}`) }, yAxis: { title: { text: "Notional (USD)" } }, series: [{ name: "Current notional", color: "#374151", data: sfiRows.map(r => r.notionalUsd || 0) }] });
+        const books = [...new Set(sfiRows.map(r => r.book))];
+        const assets = ["Structured Rate", "Structured Credit (Flow)", "FX"];
+        const heat = [];
+        books.forEach((b, x) => assets.forEach((a, y) => {
+          const row = sfiRows.find(r => r.assetClass === a && r.book === b);
+          heat.push([x, y, row?.revenueUsd || 0]);
+        }));
+        safeChart("sfiHeatmapChart", { ...hcBase("heatmap"), xAxis: { categories: books }, yAxis: { categories: assets, title: { text: null } }, colorAxis: { min: 0, minColor: "#fff7f8", maxColor: "#db0011" }, series: [{ name: "Revenue", borderWidth: 1, data: heat, dataLabels: { enabled: false } }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Structured FI failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("structured");
+    }
+    function renderIlliquid() {
+      const root = qs("illiquid-repack");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect Illiquid / Repack.</div></section>`;
+          finishModule("illiquid");
+          return;
+        }
+        const rows = state.payload.rebuild.illiquidByType;
+        const sum = state.payload.rebuild.bucketRows.find(r => r.rowLabel === "Illiquid Credit + Repack");
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Illiquid / Repack</div>
+            <div class="metric-grid">
+              <div class="metric-tile"><div class="name">Current notional</div><div class="amount">${formatMoney(sum?.currentNotionalUsd || 0, "USD", 0)}</div></div>
+              <div class="metric-tile"><div class="name">Current revenue</div><div class="amount">${formatMoney(sum?.currentRevenueUsd || 0, "USD", 0)}</div></div>
+              <div class="metric-tile"><div class="name">Books</div><div class="amount">${formatNumber(new Set(rows.map(r => r.book)).size, 0)}</div></div>
+              <div class="metric-tile"><div class="name">Rows</div><div class="amount">${formatNumber(rows.reduce((a, r) => a + r.rows, 0), 0)}</div></div>
+            </div>
+            ${renderTableFromObjects(rows, [
+              { label: "Asset", value: "assetClass" },
+              { label: "Book", value: "book" },
+              { label: "Notional", value: "notionalUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Revenue", value: "revenueUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Rows", value: "rows" }
+            ])}
+          </section>
+          <section class="card"><div class="section-title">Illiquid / Repack Charts</div><div class="chart-grid"><div id="illiquidRevenueChart" class="chart"></div><div id="illiquidNotionalChart" class="chart"></div></div></section>`;
+        safeChart("illiquidRevenueChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => `${r.assetClass} | ${r.book}`) }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "Revenue", color: "#db0011", data: rows.map(r => r.revenueUsd || 0) }] });
+        const byAsset = ["Illiquid Credit", "Repack"].map(name => ({ name, notional: rows.filter(r => r.assetClass === name).reduce((a, r) => a + (r.notionalUsd || 0), 0) }));
+        safeChart("illiquidNotionalChart", { ...hcBase("bar"), xAxis: { categories: byAsset.map(r => r.name) }, yAxis: { title: { text: "Notional (USD)" } }, series: [{ name: "Notional", color: "#374151", data: byAsset.map(r => r.notional) }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Illiquid / Repack failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("illiquid");
+    }
+    function renderCollar() {
+      const root = qs("collar");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect Collar.</div></section>`;
+          finishModule("collar");
+          return;
+        }
+        const rows = state.payload.rebuild.collarByUnderlying;
+        const strategies = state.payload.rebuild.collarStrategies;
+        const paired = strategies.filter(r => (r.assetSpecificJson?.pairingStatus || "") === "Paired");
+        const incomplete = strategies.length - paired.length;
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Collar</div>
+            <div class="${incomplete ? "warn-note" : "good-note"}">${incomplete ? `${incomplete} incomplete collar pairing(s) flagged.` : "No incomplete collar pairings detected."}</div>
+            <div class="two-up" style="margin-top:12px">
+              <div>${renderTableFromObjects(rows, [
+                { label: "Underlying", value: "underlying" },
+                { label: "Strategies", value: "strategies" },
+                { label: "New Notional", value: "newNotionalUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "MSS Revenue", value: "mssRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Bank Revenue", value: "bankRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Incomplete", value: "incomplete" }
+              ])}</div>
+              <div>${renderTableFromObjects(strategies.slice(0, 20), [
+                { label: "Date", value: "tradeDate" },
+                { label: "Underlying", value: "underlying" },
+                { label: "Action", value: "actionType" },
+                { label: "Notional", value: "notionalUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "MSS Revenue", value: "mssRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Pairing", value: r => r.assetSpecificJson?.pairingStatus || "" }
+              ])}</div>
+            </div>
+          </section>
+          <section class="card"><div class="section-title">Collar Charts</div><div class="chart-grid"><div id="collarNotionalChart" class="chart"></div><div id="collarRevenueChart" class="chart"></div><div id="collarTimelineChart" class="chart short"></div></div></section>`;
+        safeChart("collarNotionalChart", { ...hcBase("bar"), xAxis: { categories: rows.map(r => r.underlying) }, yAxis: { title: { text: "Notional (USD)" } }, series: [{ name: "New notional", color: "#db0011", data: rows.map(r => r.newNotionalUsd || 0) }] });
+        safeChart("collarRevenueChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => r.underlying) }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "MSS revenue", color: "#374151", data: rows.map(r => r.mssRevenueUsd || 0) }, { name: "Bank revenue", color: "#0f766e", data: rows.map(r => r.bankRevenueUsd || 0) }] });
+        const monthSeries = buildMonthlySeries(strategies, r => r.mssRevenueUsd || 0);
+        safeChart("collarTimelineChart", { ...hcBase("line"), xAxis: { categories: monthSeries.categories }, yAxis: { title: { text: "MSS revenue (USD)" } }, series: [{ name: "MSS revenue", color: "#db0011", data: monthSeries.values }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Collar failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("collar");
+    }
+    function renderTRS() {
+      const root = qs("equity-trs");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect Equity TRS.</div></section>`;
+          finishModule("trs");
+          return;
+        }
+        const rows = state.payload.rebuild.trsByUnderlying;
+        const events = state.payload.rebuild.trsEvents;
+        const legacyNotes = state.dataset.sourceKind === "legacy" ? (state.dataset.workbookHeadlines.trsSummary?.notes || []) : [];
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Equity TRS</div>
+            <div class="info-note">TRS headline notional uses the selected USDHKD override. Live USDHKD is used by default for headline conversion.</div>
+            ${legacyNotes.map(n => `<div class="warn-note" style="margin-top:8px">${escapeHtml(n)}</div>`).join("")}
+            <div class="two-up" style="margin-top:12px">
+              <div>${renderTableFromObjects(rows, [
+                { label: "Underlying", value: "underlying" },
+                { label: "Rows", value: "rows" },
+                { label: "Headline New Notional", value: "headlineNewNotionalUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Gross MSS Revenue", value: "grossMssRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Gross Bank Revenue", value: "grossBankRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "Net Exposure", value: "netExposureUsd", format: v => formatMoney(v, "USD", 0) }
+              ])}</div>
+              <div>${renderTableFromObjects(events.slice(0, 20), [
+                { label: "Date", value: "tradeDate" },
+                { label: "Ref", value: "sourceRecordId" },
+                { label: "Underlying", value: "underlying" },
+                { label: "Action", value: "actionType" },
+                { label: "Notional", value: "notionalUsd", format: v => formatMoney(v, "USD", 0) },
+                { label: "MSS Revenue", value: "mssRevenueUsd", format: v => formatMoney(v, "USD", 0) }
+              ])}</div>
+            </div>
+          </section>
+          <section class="card"><div class="section-title">TRS Charts</div><div class="chart-grid"><div id="trsNotionalChart" class="chart"></div><div id="trsRevenueChart" class="chart"></div><div id="trsExposureChart" class="chart short"></div><div id="trsTimelineChart" class="chart short"></div></div></section>`;
+        safeChart("trsNotionalChart", { ...hcBase("bar"), xAxis: { categories: rows.map(r => r.underlying) }, yAxis: { title: { text: "Headline notional (USD)" } }, series: [{ name: "Headline new notional", color: "#db0011", data: rows.map(r => r.headlineNewNotionalUsd || 0) }] });
+        safeChart("trsRevenueChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => r.underlying) }, yAxis: { title: { text: "MSS revenue (USD)" } }, series: [{ name: "MSS revenue", color: "#374151", data: rows.map(r => r.grossMssRevenueUsd || 0) }] });
+        safeChart("trsExposureChart", { ...hcBase("bar"), xAxis: { categories: rows.map(r => r.underlying) }, yAxis: { title: { text: "Net exposure (USD)" } }, series: [{ name: "Net exposure", color: "#0f766e", data: rows.map(r => r.netExposureUsd || 0) }] });
+        const monthSeries = buildMonthlySeries(events, r => r.mssRevenueUsd || 0);
+        safeChart("trsTimelineChart", { ...hcBase("line"), xAxis: { categories: monthSeries.categories }, yAxis: { title: { text: "MSS revenue (USD)" } }, series: [{ name: "MSS revenue", color: "#db0011", data: monthSeries.values }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">TRS failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("trs");
+    }
+    function renderReconciliation() {
+      const root = qs("reconciliation");
+      try {
+        if (!state.payload) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect reconciliation.</div></section>`;
+          finishModule("reconciliation");
+          return;
+        }
+        if (!state.payload.headline.available) {
+          root.innerHTML = `<section class="card"><div class="warn-note">No curated headline is available for this period. Use Raw Rebuild or Main Summary.</div></section>`;
+          finishModule("reconciliation");
+          return;
+        }
+        const rows = state.payload.variance;
+        const note = state.dataset.sourceKind === "cleaned_flat"
+          ? "For the cleaned flat workbook, headline mode is synthesised from the same normalised rows, so variance should be zero unless controls differ."
+          : "This view compares the curated workbook headline against the raw rebuild logic.";
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Reconciliation</div>
+            <div class="info-note">${escapeHtml(note)}</div>
+            <div style="margin-top:12px">${renderTableFromObjects(rows, [
+              { label: "Bucket", value: "rowLabel" },
+              { label: "Headline Notional", value: "headlineCurrentNotional", format: v => formatMoney(v, "USD", 0) },
+              { label: "Raw Notional", value: "rebuildCurrentNotional", format: v => formatMoney(v, "USD", 0) },
+              { label: "Variance", value: "notionalVariance", format: v => `<span class="${deltaClass(v)}">${formatMoney(v, "USD", 0)}</span>` },
+              { label: "Headline Revenue", value: "headlineCurrentRevenue", format: v => formatMoney(v, "USD", 0) },
+              { label: "Raw Revenue", value: "rebuildCurrentRevenue", format: v => formatMoney(v, "USD", 0) },
+              { label: "Variance", value: "revenueVariance", format: v => `<span class="${deltaClass(v)}">${formatMoney(v, "USD", 0)}</span>` }
+            ])}</div>
+          </section>
+          <section class="card"><div class="section-title">Variance Charts</div><div class="chart-grid"><div id="recNotionalChart" class="chart"></div><div id="recRevenueChart" class="chart"></div></div></section>`;
+        safeChart("recNotionalChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => r.rowLabel) }, yAxis: { title: { text: "Variance (USD)" } }, series: [{ name: "Notional variance", data: rows.map(r => ({ y: r.notionalVariance || 0, color: (r.notionalVariance || 0) >= 0 ? "#15803d" : "#db0011" })) }] });
+        safeChart("recRevenueChart", { ...hcBase("column"), xAxis: { categories: rows.map(r => r.rowLabel) }, yAxis: { title: { text: "Variance (USD)" } }, series: [{ name: "Revenue variance", data: rows.map(r => ({ y: r.revenueVariance || 0, color: (r.revenueVariance || 0) >= 0 ? "#15803d" : "#db0011" })) }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Reconciliation failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("reconciliation");
+    }
+    function renderUnifiedMain() {
+      const root = qs("unified-main");
+      try {
+        if (!state.dataset) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect the unified row model.</div></section>`;
+          finishModule("unified");
+          return;
+        }
+        const rows = state.dataset.factRows;
+        const sourceCounts = [...groupBy(rows, r => r.sourceKind).entries()].map(([k, v]) => ({ name: k, y: v.length }));
+        const assetCounts = [...groupBy(rows, r => r.assetClass).entries()].map(([k, v]) => ({ name: k, y: v.length }));
+        const assetRevenue = [...groupBy(rows, r => r.assetClass).entries()].map(([k, v]) => ({ assetClass: k, revenueUsd: v.reduce((a, r) => a + (r.mssRevenueUsd || 0), 0) }));
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Unified Main Table</div>
+            ${renderTableFromObjects(rows.slice(0, 250), [
+              { label: "Date", value: "tradeDate" },
+              { label: "Source", value: "sourceKind" },
+              { label: "Sheet", value: "sourceSheet" },
+              { label: "Asset", value: "assetClass" },
+              { label: "Bucket", value: "mainSummaryBucket" },
+              { label: "Book", value: "book" },
+              { label: "Underlying", value: "underlying" },
+              { label: "Action", value: "actionType" },
+              { label: "Notional USD", value: "notionalUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "MSS Rev USD", value: "mssRevenueUsd", format: v => formatMoney(v, "USD", 0) },
+              { label: "Bank Rev USD", value: "bankRevenueUsd", format: v => formatMoney(v, "USD", 0) }
+            ])}
+            <p class="mini">Showing first 250 normalised rows.</p>
+          </section>
+          <section class="card"><div class="section-title">Unified Charts</div><div class="chart-grid"><div id="unifiedSourceChart" class="chart short"></div><div id="unifiedAssetChart" class="chart short"></div><div id="unifiedRevenueChart" class="chart"></div></div></section>`;
+        safeChart("unifiedSourceChart", { ...hcBase("pie"), series: [{ name: "Rows", data: sourceCounts }] });
+        safeChart("unifiedAssetChart", { ...hcBase("pie"), series: [{ name: "Rows", data: assetCounts }] });
+        safeChart("unifiedRevenueChart", { ...hcBase("column"), xAxis: { categories: assetRevenue.map(r => r.assetClass) }, yAxis: { title: { text: "Revenue (USD)" } }, series: [{ name: "Revenue", color: "#db0011", data: assetRevenue.map(r => r.revenueUsd) }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Unified table failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("unified");
+    }
+    function renderInputData() {
+      const root = qs("input-data");
+      try {
+        if (!state.dataset) {
+          root.innerHTML = `<section class="card"><div class="empty">No workbook has been loaded.</div></section>`;
+          finishModule("input");
+          return;
+        }
+        const selected = qs("inputSheetSelect")?.value || state.dataset.sheetNames[0];
+        const sheet = state.dataset.rawSheets[selected] || state.dataset.rawSheets[state.dataset.sheetNames[0]];
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">Input Data</div>
+            <div class="controls">
+              <div class="field">
+                <label for="inputSheetSelect">Sheet</label>
+                <select id="inputSheetSelect">${state.dataset.sheetNames.map(s => `<option value="${escapeHtml(s)}" ${s === selected ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}</select>
+              </div>
+              <div class="field"><label>Rows</label><div class="inline-code">${formatNumber(sheet?.rowCount || 0, 0)}</div></div>
+              <div class="field"><label>Columns</label><div class="inline-code">${formatNumber(sheet?.colCount || 0, 0)}</div></div>
+            </div>
+            <div style="margin-top:12px">${sheet?.preview?.length ? `<div class="table-wrap"><table><tbody>${sheet.preview.map((row, idx) => `<tr>${row.map(cell => `<td>${escapeHtml(cell ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="empty">No preview rows available.</div>`}</div>
+          </section>`;
+        const sheetSelect = qs("inputSheetSelect");
+        if (sheetSelect) sheetSelect.addEventListener("change", renderInputData, { once: true });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">Input data failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("input");
+    }
+    function renderQA() {
+      const root = qs("qa");
+      try {
+        if (!state.dataset) {
+          root.innerHTML = `<section class="card"><div class="empty">Upload a workbook to inspect parser notes and exceptions.</div></section>`;
+          finishModule("qa");
+          return;
+        }
+        const issues = state.dataset.qaIssues || [];
+        const byType = [...groupBy(issues, r => r.issueType).entries()].map(([k, v]) => ({ name: k, y: v.length }));
+        const bySeverity = [...groupBy(issues, r => r.severity).entries()].map(([k, v]) => ({ name: k, y: v.length }));
+        root.innerHTML = `
+          <section class="card">
+            <div class="section-title">QA / Exceptions</div>
+            <div class="good-note">${state.dataset.parserNotes.map(x => escapeHtml(x)).join("<br>")}</div>
+            <div style="margin-top:12px">${issues.length ? renderTableFromObjects(issues, [
+              { label: "Severity", value: "severity" },
+              { label: "Type", value: "issueType" },
+              { label: "Sheet", value: "sourceSheet" },
+              { label: "Record", value: "sourceRecordId" },
+              { label: "Message", value: "message" }
+            ]) : `<div class="good-note">No parser exceptions were detected.</div>`}</div>
+          </section>
+          <section class="card"><div class="section-title">QA Charts</div><div class="chart-grid"><div id="qaTypeChart" class="chart short"></div><div id="qaSeverityChart" class="chart short"></div></div></section>`;
+        safeChart("qaTypeChart", { ...hcBase("column"), xAxis: { categories: byType.map(r => r.name) }, series: [{ name: "Count", color: "#db0011", data: byType.map(r => r.y) }] });
+        safeChart("qaSeverityChart", { ...hcBase("pie"), series: [{ name: "Count", data: bySeverity }] });
+      } catch (e) {
+        root.innerHTML = `<section class="card"><div class="bad-note">QA failed to render: ${escapeHtml(e?.message || "Unknown error")}</div></section>`;
+      }
+      finishModule("qa");
+    }
+    function renderMoreInfo() {
+      const root = qs("more-info");
+      root.innerHTML = `
+        <section class="card">
+          <div class="section-title">More Info</div>
+          <div class="info-grid">
+            <div class="info-card">
+              <h3>Purpose</h3>
+              <p>Auto-detect whether the uploaded file is a legacy multi-sheet workbook or a cleaned flat workbook, then normalise the rows into one reporting model.</p>
+            </div>
+            <div class="info-card">
+              <h3>Inputs</h3>
+              <ul>
+                <li>Legacy workbook with curated summary tabs and underlying blotter tabs.</li>
+                <li>Cleaned flat workbook with tier fields, trade date, volume, PC, VA/GNBV and comment metadata.</li>
+                <li>Live USDHKD from <span class="inline-code">/studio/api/fx_spot_time_series</span>, with fallback to 7.8430.</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h3>Outputs</h3>
+              <ul>
+                <li>Headline, raw rebuild and variance summary views.</li>
+                <li>Structured FI, Illiquid / Repack, Collar and Equity TRS detail tabs.</li>
+                <li>CSV export for the main summary.</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h3>Total policy</h3>
+              <ul>
+                <li>FX is included in totals by default.</li>
+                <li>The total policy can be switched to ex FX at any time.</li>
+                <li>Headline, raw rebuild and variance all follow the selected total policy.</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h3>TRS headline FX override</h3>
+              <ul>
+                <li>Default source is live USDHKD from the Bloomberg-backed FX Spot Time Series endpoint.</li>
+                <li>Manual override remains available for controlled re-runs.</li>
+                <li>Equity TRS headline notional converts HKD local notional by the selected FX override.</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h3>Mode definitions</h3>
+              <ul>
+                <li><b>Headline</b>: uses curated workbook headline where available, or synthetic headline for cleaned flat inputs.</li>
+                <li><b>Raw Rebuild</b>: rebuilds directly from the unified rows.</li>
+                <li><b>Variance</b>: shows raw rebuild minus headline.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="mini">Enterprise references retained: <a href="/studio/api/fx_spot_time_series?ccyPair=USDHKD&startDate=2026-06-01&endDate=2026-07-06&frequency=1D00:00:00" target="_blank" rel="noopener noreferrer">FX time series API example</a>.</p>
+        </section>`;
+      finishModule("info");
+    }
+
+    function renderAll() {
+      resetModules();
+      destroyAllCharts();
+      qs("datasetInfo").textContent = state.dataset ? `Dataset: ${state.dataset.filename}` : "Dataset: none";
+      const period = getCurrentPeriod();
+      qs("heroPeriod").textContent = period ? period.label.replace(" YTD through ", " ") : "-";
+      qs("heroFx").textContent = Number(currentOverrideValue() || LIVE_FX_FALLBACK).toFixed(4);
+      qs("heroFxMode").textContent = qs("trsFxMode").value === "live" ? "Live" : "Manual";
+      qs("heroTotalMode").textContent = qs("includeFxFlag").value === "true" ? "Incl FX" : "Ex FX";
+      renderMainSummary();
+      renderStructuredFI();
+      renderIlliquid();
+      renderCollar();
+      renderTRS();
+      renderReconciliation();
+      renderUnifiedMain();
+      renderInputData();
+      renderQA();
+      renderMoreInfo();
+    }
+    function activateTab(tabId) {
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === tabId));
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
+    }
+    function normaliseFxApiRows(json) {
+      const rows = [];
+      function visit(v) {
+        if (Array.isArray(v)) v.forEach(visit);
+        else if (v && typeof v === "object") {
+          const firstObj = Object.values(v).find(x => x && typeof x === "object") || null;
+          const close = parseNumber(v.close ?? v.value ?? v.mid ?? v.last ?? firstObj?.close ?? firstObj?.value);
+          const date = isoDate(v.date ?? v.time ?? v.timestamp ?? v.fxDate ?? firstObj?.date);
+          if (close != null) rows.push({ date, close });
+          Object.values(v).forEach(child => {
+            if (child && typeof child === "object") visit(child);
+          });
+        }
+      }
+      visit(json);
+      return rows.filter(r => r.close != null);
+    }
+    async function fetchLiveUsdHkd() {
+      setFxPill("Refreshing live USDHKD", "info");
+      try {
+        const end = new Date();
+        const start = new Date(Date.now() - FX_LOOKBACK_DAYS * 24 * 3600 * 1000);
+        const url = `/studio/api/fx_spot_time_series?ccyPair=${encodeURIComponent(FX_PAIR)}&startDate=${start.toISOString().slice(0, 10)}&endDate=${end.toISOString().slice(0, 10)}&frequency=1D00:00:00`;
+        const res = await fetch(url, { credentials: "include" });
+        if (!res.ok) throw new Error(`FX API returned ${res.status}`);
+        const json = await res.json();
+        const data = normaliseFxApiRows(json);
+        if (!data.length) throw new Error("FX API returned no parseable rows");
+        const last = data[data.length - 1];
+        const live = parseNumber(last.close);
+        if (live == null) throw new Error("Latest FX value is not numeric");
+        state.liveFxOverride = live;
+        if (qs("trsFxMode").value === "live") qs("trsFxOverride").value = Number(live).toFixed(4);
+        setFxPill(`Live USDHKD ${Number(live).toFixed(4)}`, "good");
+        setStatus(state.dataset ? "Workbook loaded" : "No dataset loaded", state.dataset ? "good" : "warn");
+        buildPayload();
+        renderAll();
+      } catch (e) {
+        state.liveFxOverride = LIVE_FX_FALLBACK;
+        if (qs("trsFxMode").value === "live") qs("trsFxOverride").value = Number(state.liveFxOverride).toFixed(4);
+        setFxPill(`Fallback USDHKD ${Number(LIVE_FX_FALLBACK).toFixed(4)}`, "warn");
+        renderAll();
+      }
+    }
+    async function parseWorkbookBuffer(arrayBuffer, filename) {
+      setStatus("Parsing workbook", "warn");
+      if (!window.XLSX) throw new Error("XLSX library is not available. Check the enterprise/CDN connection.");
+      const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+      const type = detectWorkbookType(workbook);
+      state.dataset = type === "cleaned_flat"
+        ? parseCleanedFlatWorkbook(workbook, filename)
+        : parseLegacyWorkbook(workbook, filename);
+      state.selectedPeriodKey = state.dataset.periods[0]?.key || null;
+      populateControls();
+      buildPayload();
+      setParser(type === "cleaned_flat" ? "Cleaned flat parser active" : "Legacy parser active", "good");
+      setStatus("Workbook parsed", "good");
+      renderAll();
+    }
+    async function handleUpload() {
+      const file = qs("fileInput").files?.[0];
+      if (!file) {
+        qs("loadNote").textContent = "Please choose a workbook first.";
+        return;
+      }
+      try {
+        const buffer = await file.arrayBuffer();
+        await parseWorkbookBuffer(buffer, file.name);
+        qs("loadNote").textContent = `Loaded ${file.name}.`;
+      } catch (e) {
+        setStatus("Workbook parse failed", "bad");
+        qs("loadNote").textContent = e?.message || "Workbook parse failed.";
+      }
+    }
+    function exportMainSummaryCsv() {
+      if (!state.payload) return;
+      const p = state.payload;
+      const includeFx = String(qs("includeFxFlag").value) === "true";
+      let rows;
+      if (p.mode === "variance") {
+        rows = [
+          ["Bucket", "Headline Current Notional", "Raw Current Notional", "Notional Variance", "Headline Current Revenue", "Raw Current Revenue", "Revenue Variance"],
+          ...p.variance.map(r => [r.rowLabel, r.headlineCurrentNotional, r.rebuildCurrentNotional, r.notionalVariance, r.headlineCurrentRevenue, r.rebuildCurrentRevenue, r.revenueVariance])
+        ];
+      } else {
+        const body = activeSummaryRows();
+        const total = activeTotal();
+        rows = [
+          ["Bucket", "Current Notional", "Current Revenue", "Prior Notional", "Prior Revenue", "Notional Change Pct", "Revenue Change Pct"],
+          ...body.map(r => [r.rowLabel, r.currentNotionalUsd, r.currentRevenueUsd, r.priorNotionalUsd, r.priorRevenueUsd, r.notionalChangePct, r.revenueChangePct]),
+          [includeFx ? "Total incl FX" : "Total ex FX", total?.currentNotionalUsd, total?.currentRevenueUsd, total?.priorNotionalUsd, total?.priorRevenueUsd, total?.notionalChangePct, total?.revenueChangePct]
+        ];
+      }
+      const csv = rows.map(r => r.map(v => {
+        const s = v == null ? "" : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, "\"\"")}"` : s;
+      }).join(",")).join("\n");
+      downloadTextFile("wsg_blotter_main_summary.csv", csv);
+    }
+    function bindEvents() {
+      qs("btnUpload").addEventListener("click", handleUpload);
+      qs("btnRefresh").addEventListener("click", () => {
+        buildPayload();
+        renderAll();
+      });
+      qs("btnExportMain").addEventListener("click", exportMainSummaryCsv);
+      qs("btnRefreshLiveFx").addEventListener("click", async () => {
+        await fetchLiveUsdHkd();
+        buildPayload();
+        renderAll();
+      });
+      qs("periodSelect").addEventListener("change", e => {
+        state.selectedPeriodKey = e.target.value;
+        buildPayload();
+        renderAll();
+      });
+      qs("summaryMode").addEventListener("change", () => {
+        buildPayload();
+        renderAll();
+      });
+      qs("trsFxMode").addEventListener("change", () => {
+        const liveMode = qs("trsFxMode").value === "live";
+        qs("trsFxOverride").disabled = liveMode;
+        if (liveMode) qs("trsFxOverride").value = Number(state.liveFxOverride || LIVE_FX_FALLBACK).toFixed(4);
+        buildPayload();
+        renderAll();
+      });
+      qs("trsFxOverride").addEventListener("change", () => {
+        buildPayload();
+        renderAll();
+      });
+      qs("includeFxFlag").addEventListener("change", () => {
+        buildPayload();
+        renderAll();
+      });
+      document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => activateTab(btn.dataset.tab)));
+    }
+    async function init() {
+      bindEvents();
+      qs("trsFxOverride").disabled = qs("trsFxMode").value === "live";
+      renderAll();
+      await fetchLiveUsdHkd();
+    }
+    init();
+  </script>
+</body>
+</html>

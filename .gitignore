@@ -1,0 +1,24 @@
+# System files
+.DS_Store
+.DS_Store?
+*.swp
+*.swo
+*~
+._.DS_Store
+
+# Images
+*.HEIC
+*.JPG
+*.jpg
+*.PNG
+*.png
+
+# Build artifacts
+.claude/scheduled_tasks.lock
+node_modules/
+*.xlsx
+*.xls
+
+# Local development
+/scratchpad/
+/tmp/
