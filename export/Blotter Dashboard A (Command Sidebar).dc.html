@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; background: #eef0f3; color: #16181d; font-family: Arial, Helvetica, sans-serif; }
+    a { color: #1d4ed8; text-decoration: none; }
+    a:hover { color: #db0011; text-decoration: underline; }
+    @media print {
+      [data-noprint] { display: none !important; }
+      [data-printfull] { height: auto !important; overflow: visible !important; }
+      body { background: #fff; }
+    }
+  </style>
+  <script src="https://unpkg.com/highcharts@11.4.8/highcharts.js"></script>
+  <script src="https://unpkg.com/highcharts@11.4.8/modules/heatmap.js"></script>
+</helmet>
+
+<div style="display:flex;height:100vh;overflow:hidden" data-screen-label="Blotter A Command Sidebar">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div data-noprint style="width:242px;flex:0 0 242px;background:#14161b;color:#d4d7dd;display:flex;flex-direction:column;overflow-y:auto">
+    <div style="display:flex;gap:11px;align-items:center;padding:16px 16px 14px;border-bottom:1px solid #23262d">
+      <div style="width:30px;height:30px;flex:0 0 auto;background:#db0011;transform:rotate(45deg);border-radius:3px;box-shadow:0 4px 12px rgba(219,0,17,.35)"></div>
+      <div>
+        <div style="font-size:14.5px;font-weight:700;color:#fff;letter-spacing:.01em">WSG Blotter</div>
+        <div style="font-size:10.5px;color:#8a8f99;margin-top:2px;text-transform:uppercase;letter-spacing:.08em">Desk Control Board</div>
+      </div>
+    </div>
+
+    <div style="padding:12px 12px 4px">
+      <input type="text" placeholder="Search trade, underlying, client…" value="{{ search }}" onChange="{{ setSearch }}" style="width:100%;box-sizing:border-box;background:#1e2129;border:1px solid #2c303a;border-radius:6px;color:#e5e7eb;font:inherit;font-size:11.5px;padding:8px 10px;outline:none" />
+      <sc-if value="{{ hasSearchResults }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#1e2129;border:1px solid #2c303a;border-radius:6px;margin-top:6px;overflow:hidden">
+          <sc-for list="{{ searchResults }}" as="res" hint-placeholder-count="0">
+            <div onClick="{{ res.click }}" style="padding:7px 10px;cursor:pointer;border-bottom:1px solid #262a33" style-hover="background:#262a33">
+              <div style="font-size:11px;color:#fff;font-weight:700">{{ res.id }}</div>
+              <div style="font-size:10px;color:#8a8f99;margin-top:2px">{{ res.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="10">
+        <div onClick="{{ item.click }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;background:{{ item.bg }};border-left:3px solid {{ item.bl }}" style-hover="background:#1e2129">
+          <div style="flex:1;font-size:12px;font-weight:{{ item.w }};color:{{ item.color }}">{{ item.label }}</div>
+          <div style="font-size:10px;font-weight:700;color:#fff;background:{{ item.badgeBg }};border-radius:999px;padding:1px 7px">{{ item.badge }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="padding:14px 16px;border-top:1px solid #23262d;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:7px;height:7px;border-radius:999px;background:#22c55e"></div>
+        <div style="font-size:11px;color:#c8ccd4">Live USDHKD <span style="font-weight:700;color:#fff">{{ fxLiveFmt }}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:7px;height:7px;border-radius:999px;background:#22c55e"></div>
+        <div style="font-size:11px;color:#c8ccd4">Parser: cleaned flat active</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:7px;height:7px;border-radius:999px;background:#f59e0b"></div>
+        <div style="font-size:11px;color:#c8ccd4">8 QA notes on last parse</div>
+      </div>
+      <div style="font-size:10px;color:#6b7280;line-height:1.5;margin-top:2px">{{ filename }}<br />Loaded {{ loadedAt }}</div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+    <!-- topbar -->
+    <div data-noprint style="background:#fff;border-bottom:1px solid #e2e4e8;padding:10px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div style="font-size:16px;font-weight:700">{{ viewTitle }}</div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Period</div>
+          <select value="{{ periodKey }}" onChange="{{ setPeriod }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+            <sc-for list="{{ periods }}" as="p" hint-placeholder-count="6">
+              <option value="{{ p.key }}">{{ p.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em" title="Headline = curated workbook figures. Raw Rebuild = rebuilt directly from unified trade rows. Variance = Raw minus Headline, to spot control gaps.">Summary mode ⓘ</div>
+          <select value="{{ mode }}" onChange="{{ setMode }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+            <option value="headline">Headline (curated)</option>
+            <option value="raw">Raw Rebuild (from rows)</option>
+            <option value="variance">Variance (raw − headline)</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">TRS FX source</div>
+          <select value="{{ fxMode }}" onChange="{{ setFxMode }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+            <option value="live">Live USDHKD</option>
+            <option value="manual">Manual override</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">FX override</div>
+          <input type="number" step="0.0001" value="{{ fxVal }}" onChange="{{ setFxManual }}" disabled="{{ fxDisabled }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;width:84px;background:#fff" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Total policy (always shown)</div>
+          <select value="{{ includeFxStr }}" onChange="{{ setIncludeFx }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:2px solid #db0011;border-radius:6px;background:#fff;font-weight:700">
+            <option value="true">Total incl FX</option>
+            <option value="false">Total ex FX</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;padding-top:12px">
+          <button onClick="{{ toggleCompare }}" style="font:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:999px;border:1px solid {{ compareBorder }};background:{{ compareBg }};color:{{ compareColor }};cursor:pointer">{{ compareLabel }}</button>
+          <button onClick="{{ exportCsv }}" style="font:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:999px;border:1px solid #d1d5db;background:#fff;color:#16181d;cursor:pointer" style-hover="border-color:#9ca3af">Export CSV</button>
+          <button onClick="{{ printSummary }}" style="font:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:999px;border:none;background:#db0011;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(219,0,17,.25)">Print Summary</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- content -->
+    <div data-printfull style="flex:1;overflow-y:auto;padding:16px 18px">
+
+      <!-- ======== FILTER BAR (all tabs) ======== -->
+      <div data-noprint style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:9px 12px;margin-bottom:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Filters</div>
+        <select value="{{ fAsset }}" onChange="{{ setFAsset }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+          <sc-for list="{{ assetOpts }}" as="o" hint-placeholder-count="7"><option value="{{ o }}">{{ o }}</option></sc-for>
+        </select>
+        <select value="{{ fBook }}" onChange="{{ setFBook }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+          <sc-for list="{{ bookOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o }}">{{ o }}</option></sc-for>
+        </select>
+        <select value="{{ fTrader }}" onChange="{{ setFTrader }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+          <sc-for list="{{ traderOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o }}">{{ o }}</option></sc-for>
+        </select>
+        <select value="{{ fAction }}" onChange="{{ setFAction }}" style="font:inherit;font-size:11.5px;padding:5px 7px;border:1px solid #d1d5db;border-radius:6px;background:#fff">
+          <sc-for list="{{ actionOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o }}">{{ o }}</option></sc-for>
+        </select>
+        <sc-if value="{{ filtersActive }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ resetFilters }}" style="font:inherit;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;border:1px solid #db0011;background:#fff1f2;color:#db0011;cursor:pointer">Reset filters</button>
+        </sc-if>
+        <div style="font-size:10.5px;color:#6b7280">Applies to Main Summary, detail tabs and Unified Table.</div>
+      </div>
+
+      <!-- ======== OVERVIEW ======== -->
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Overview">
+          <div style="border:1px solid #d1fae5;background:#f0fdf4;color:#166534;border-radius:6px;padding:9px 12px;font-size:11.5px;margin-bottom:14px">{{ modeNote }}</div>
+
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+              <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:11px 13px">
+                <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">{{ k.label }}</div>
+                <div style="font-size:21px;font-weight:700;margin-top:5px;white-space:nowrap">{{ k.value }}</div>
+                <div style="font-size:10.5px;margin-top:4px;color:{{ k.subc }}">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ compareOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+              <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:12px 14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span style="width:4px;height:14px;border-radius:99px;background:#db0011;display:inline-block"></span>{{ cmpCurTitle }}</div>
+                <sc-for list="{{ cmpCur }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;border-top:1px solid #f1f2f4;padding:5px 0;font-size:11.5px">
+                    <div style="font-weight:{{ r.w }}">{{ r.label }}</div>
+                    <div style="text-align:right">{{ r.n }}</div>
+                    <div style="text-align:right;font-weight:{{ r.w }}">{{ r.r }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:12px 14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span style="width:4px;height:14px;border-radius:99px;background:#9ca3af;display:inline-block"></span>{{ cmpPrvTitle }}</div>
+                <sc-for list="{{ cmpPrv }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;border-top:1px solid #f1f2f4;padding:5px 0;font-size:11.5px">
+                    <div style="font-weight:{{ r.w }}">{{ r.label }}</div>
+                    <div style="text-align:right">{{ r.n }}</div>
+                    <div style="text-align:right;font-weight:{{ r.w }}">{{ r.r }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;margin-bottom:14px;overflow:hidden">
+            <div style="padding:11px 14px;border-bottom:1px solid #e2e4e8;display:flex;align-items:center;gap:10px">
+              <span style="width:4px;height:15px;border-radius:99px;background:#db0011"></span>
+              <span style="font-size:13px;font-weight:700">Main Summary</span>
+              <span style="font-size:10.5px;color:#6b7280">click a bucket to drill to book, click a book to drill to trades</span>
+            </div>
+            <div style="overflow-x:auto">
+              <div style="min-width:920px">
+                <div style="display:grid;grid-template-columns:minmax(250px,1.6fr) repeat(4,minmax(98px,1fr)) 74px 74px 56px;background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em">Bucket / Book / Trade</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Current Notional</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Current Revenue</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Prior Notional</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Prior Revenue</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Δ Ntl</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Δ Rev</div>
+                  <div style="padding:7px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;text-align:right">Rows</div>
+                </div>
+                <sc-for list="{{ summaryRows }}" as="row" hint-placeholder-count="7">
+                  <div onClick="{{ row.click }}" style="display:grid;grid-template-columns:minmax(250px,1.6fr) repeat(4,minmax(98px,1fr)) 74px 74px 56px;border-top:1px solid #f1f2f4;cursor:pointer;background:{{ row.bg }}" style-hover="background:#fbf3f4">
+                    <div style="padding:6.5px 10px;padding-left:{{ row.indent }};font-size:11.5px;font-weight:{{ row.w }};color:{{ row.lc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.caret }} {{ row.label }}</div>
+                    <div style="padding:6.5px 10px;font-size:11.5px;text-align:right;font-weight:{{ row.w }}">{{ row.g2 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11.5px;text-align:right;font-weight:{{ row.w }}">{{ row.g3 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11.5px;text-align:right;color:{{ row.mc }}">{{ row.g4 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11.5px;text-align:right;color:{{ row.mc }}">{{ row.g5 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11px;text-align:right;color:{{ row.c6 }};font-weight:700">{{ row.g6 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11px;text-align:right;color:{{ row.c7 }};font-weight:700">{{ row.g7 }}</div>
+                    <div style="padding:6.5px 10px;font-size:11.5px;text-align:right;color:#6b7280">{{ row.g8 }}</div>
+                  </div>
+                </sc-for>
+                <div style="display:grid;grid-template-columns:minmax(250px,1.6fr) repeat(4,minmax(98px,1fr)) 74px 74px 56px;border-top:2px solid #e2e4e8;background:#fff7f8">
+                  <div style="padding:8px 10px;font-size:11.5px;font-weight:700">{{ tot.label }}</div>
+                  <div style="padding:8px 10px;font-size:11.5px;text-align:right;font-weight:700">{{ tot.g2 }}</div>
+                  <div style="padding:8px 10px;font-size:11.5px;text-align:right;font-weight:700">{{ tot.g3 }}</div>
+                  <div style="padding:8px 10px;font-size:11.5px;text-align:right;font-weight:700">{{ tot.g4 }}</div>
+                  <div style="padding:8px 10px;font-size:11.5px;text-align:right;font-weight:700">{{ tot.g5 }}</div>
+                  <div style="padding:8px 10px;font-size:11px;text-align:right;font-weight:700;color:{{ tot.c6 }}">{{ tot.g6 }}</div>
+                  <div style="padding:8px 10px;font-size:11px;text-align:right;font-weight:700;color:{{ tot.c7 }}">{{ tot.g7 }}</div>
+                  <div style="padding:8px 10px;font-size:11.5px;text-align:right;font-weight:700">{{ tot.g8 }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div data-noprint style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Revenue by bucket — current vs prior</div>
+              <div id="a-ov1" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Headline notional by bucket</div>
+              <div id="a-ov2" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Monthly MSS revenue — current vs prior</div>
+              <div id="a-ov3" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Cumulative revenue run-rate</div>
+              <div id="a-ov4" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Ticket mix by bucket</div>
+              <div id="a-ov5" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Revenue heatmap — book × bucket</div>
+              <div id="a-ov6" style="min-height:235px"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== DETAIL (SFI / Illiquid / Collar / TRS) ======== -->
+      <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Asset detail">
+          <div style="border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;border-radius:6px;padding:9px 12px;font-size:11.5px;margin-bottom:14px">{{ detail.note }}</div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+            <sc-for list="{{ detail.tiles }}" as="tile" hint-placeholder-count="4">
+              <div style="background:#f8fafc;border:1px solid #e2e4e8;border-radius:7px;padding:11px 13px">
+                <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">{{ tile.name }}</div>
+                <div style="font-size:19px;font-weight:700;margin-top:5px">{{ tile.amount }}</div>
+                <div style="font-size:10.5px;color:#6b7280;margin-top:3px">{{ tile.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div data-noprint style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">{{ detail.c1Title }}</div>
+              <div id="a-det1" style="min-height:225px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">{{ detail.c2Title }}</div>
+              <div id="a-det2" style="min-height:225px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">{{ detail.c3Title }}</div>
+              <div id="a-det3" style="min-height:225px"></div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden">
+              <div style="padding:10px 14px;border-bottom:1px solid #e2e4e8;font-size:13px;font-weight:700">{{ detail.leftTitle }}</div>
+              <div style="overflow-x:auto">
+                <div style="display:grid;grid-template-columns:{{ detail.leftGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                  <sc-for list="{{ detail.leftCols }}" as="c" hint-placeholder-count="5">
+                    <div style="padding:6px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">{{ c }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ detail.leftRows }}" as="row" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:{{ detail.leftGrid }};border-top:1px solid #f1f2f4">
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+                      <div style="padding:6px 10px;font-size:11.5px;color:{{ cell.c }};font-weight:{{ cell.w }};white-space:nowrap">{{ cell.t }}</div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden">
+              <div style="padding:10px 14px;border-bottom:1px solid #e2e4e8;font-size:13px;font-weight:700">{{ detail.rightTitle }}</div>
+              <div style="overflow-x:auto">
+                <div style="display:grid;grid-template-columns:{{ detail.rightGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                  <sc-for list="{{ detail.rightCols }}" as="c" hint-placeholder-count="6">
+                    <div style="padding:6px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">{{ c }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ detail.rightRows }}" as="row" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:{{ detail.rightGrid }};border-top:1px solid #f1f2f4">
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
+                      <div style="padding:6px 10px;font-size:11.5px;color:{{ cell.c }};font-weight:{{ cell.w }};white-space:nowrap">{{ cell.t }}</div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== RECONCILIATION ======== -->
+      <sc-if value="{{ isRecon }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Reconciliation">
+          <div style="border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;border-radius:6px;padding:9px 12px;font-size:11.5px;margin-bottom:14px">Curated workbook headline vs raw rebuild from unified rows. Variance = raw minus headline. Non-zero variance indicates a curated adjustment or a control gap.</div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden;margin-bottom:14px">
+            <div style="padding:10px 14px;border-bottom:1px solid #e2e4e8;font-size:13px;font-weight:700">Headline vs Raw Rebuild</div>
+            <div style="overflow-x:auto">
+              <div style="display:grid;grid-template-columns:{{ recGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                <sc-for list="{{ recCols }}" as="c" hint-placeholder-count="7">
+                  <div style="padding:6px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">{{ c }}</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ recRows }}" as="row" hint-placeholder-count="7">
+                <div style="display:grid;grid-template-columns:{{ recGrid }};border-top:1px solid #f1f2f4">
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="7">
+                    <div style="padding:6px 10px;font-size:11.5px;color:{{ cell.c }};font-weight:{{ cell.w }};white-space:nowrap">{{ cell.t }}</div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div data-noprint style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Notional variance by bucket</div>
+              <div id="a-rc1" style="min-height:245px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Revenue variance by bucket</div>
+              <div id="a-rc2" style="min-height:245px"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== UNIFIED TABLE ======== -->
+      <sc-if value="{{ isUnified }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Unified Main Table">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+            <input type="text" placeholder="Filter by id, book, underlying, client, action…" value="{{ uniFilter }}" onChange="{{ setUniFilter }}" style="flex:0 0 340px;font:inherit;font-size:11.5px;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;outline:none" />
+            <div style="font-size:11.5px;color:#6b7280">{{ uniCount }}</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden;margin-bottom:14px">
+            <div style="overflow-x:auto">
+              <div style="min-width:1080px">
+                <div style="display:grid;grid-template-columns:{{ uniGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                  <sc-for list="{{ uniCols }}" as="c" hint-placeholder-count="10">
+                    <div style="padding:6px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">{{ c }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ uniRows }}" as="row" hint-placeholder-count="14">
+                  <div style="display:grid;grid-template-columns:{{ uniGrid }};border-top:1px solid #f1f2f4" style-hover="background:#fbf3f4">
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="10">
+                      <div style="padding:5.5px 10px;font-size:11px;color:{{ cell.c }};font-weight:{{ cell.w }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cell.t }}</div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:8px 14px;font-size:10.5px;color:#6b7280;border-top:1px solid #e2e4e8">Showing first 60 matching normalised rows.</div>
+          </div>
+          <div data-noprint style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Rows by asset class</div>
+              <div id="a-un1" style="min-height:225px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">MSS revenue by asset class</div>
+              <div id="a-un2" style="min-height:225px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Monthly ticket count</div>
+              <div id="a-un3" style="min-height:225px"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== INPUT DATA ======== -->
+      <sc-if value="{{ isInput }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Input Data">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">
+            <div style="display:flex;gap:6px">
+              <div style="font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:#db0011;color:#fff">Flat Blotter</div>
+              <div style="font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #d1d5db;color:#4b5563">Reference</div>
+            </div>
+            <div style="font-size:11.5px;color:#6b7280">Rows <span style="font-family:Consolas,monospace;background:#fff;border:1px solid #e2e4e8;border-radius:4px;padding:1px 6px">{{ inputRowCount }}</span> · Columns <span style="font-family:Consolas,monospace;background:#fff;border:1px solid #e2e4e8;border-radius:4px;padding:1px 6px">11</span> · Source <span style="font-family:Consolas,monospace;background:#fff;border:1px solid #e2e4e8;border-radius:4px;padding:1px 6px">{{ filename }}</span></div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden">
+            <div style="overflow-x:auto">
+              <div style="min-width:1220px">
+                <div style="display:grid;grid-template-columns:{{ inputGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                  <sc-for list="{{ inputCols }}" as="c" hint-placeholder-count="11">
+                    <div style="padding:6px 9px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap">{{ c }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ inputRows }}" as="row" hint-placeholder-count="16">
+                  <div style="display:grid;grid-template-columns:{{ inputGrid }};border-top:1px solid #f1f2f4">
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="11">
+                      <div style="padding:5px 9px;font-size:10.5px;font-family:Consolas,monospace;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cell }}</div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:8px 14px;font-size:10.5px;color:#6b7280;border-top:1px solid #e2e4e8">Raw workbook preview retained for auditability — first 25 rows shown exactly as parsed.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== QA ======== -->
+      <sc-if value="{{ isQa }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="QA Exceptions">
+          <div style="border:1px solid #d1fae5;background:#f0fdf4;color:#166534;border-radius:6px;padding:9px 12px;font-size:11.5px;margin-bottom:14px;line-height:1.6">Cleaned flat workbook detected — rows classified from tier columns and comment metadata.<br />Where comment metadata indicates pc_source=PB_FEE_USD, bank revenue is treated as MSS revenue plus PB fee.<br />Rows normalised into the same fact model as the legacy workbook.</div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;overflow:hidden;margin-bottom:14px">
+            <div style="padding:10px 14px;border-bottom:1px solid #e2e4e8;font-size:13px;font-weight:700">Parser exceptions</div>
+            <div style="overflow-x:auto">
+              <div style="display:grid;grid-template-columns:{{ qaGrid }};background:#f7f8fa;border-bottom:1px solid #e2e4e8">
+                <sc-for list="{{ qaCols }}" as="c" hint-placeholder-count="5">
+                  <div style="padding:6px 10px;font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">{{ c }}</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ qaRows }}" as="row" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:{{ qaGrid }};border-top:1px solid #f1f2f4">
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+                    <div style="padding:6px 10px;font-size:11.5px;color:{{ cell.c }};font-weight:{{ cell.w }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cell.t }}</div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div data-noprint style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Exceptions by type</div>
+              <div id="a-qa1" style="min-height:235px"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px">Exceptions by severity</div>
+              <div id="a-qa2" style="min-height:235px"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ======== MORE INFO ======== -->
+      <sc-if value="{{ isInfo }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="More Info" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">Purpose</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.55">Auto-detect whether the uploaded file is a legacy multi-sheet workbook or a cleaned flat workbook, then normalise all rows into one reporting model with headline, raw rebuild and variance views.</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">Inputs</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.7">· Legacy workbook with curated summary tabs and blotter tabs<br />· Cleaned flat workbook with tier fields, trade date, volume, PC, VA/GNBV and comment metadata<br />· Live USDHKD from the FX spot time-series endpoint, fallback 7.8430</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">Outputs</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.7">· Headline, raw rebuild and variance summaries<br />· Structured FI, Illiquid / Repack, Collar and Equity TRS detail tabs<br />· CSV export and print-ready summary</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">Total policy</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.7">· FX is included in totals by default<br />· Switchable to ex-FX at any time<br />· All three summary modes follow the selected policy</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">TRS headline FX override</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.7">· Default source is the live USDHKD feed<br />· Manual override available for controlled re-runs<br />· TRS headline notional converts HKD local notional at the selected rate</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e4e8;border-radius:7px;padding:13px 15px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:7px">Mode definitions</div>
+            <div style="font-size:11.5px;color:#4b5563;line-height:1.7">· <b>Headline</b> — curated workbook headline where available<br />· <b>Raw Rebuild</b> — rebuilt directly from unified rows<br />· <b>Variance</b> — raw rebuild minus headline</div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1600, &quot;height&quot;: 950}, &quot;defaultMode&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;headline&quot;, &quot;raw&quot;, &quot;variance&quot;], &quot;default&quot;: &quot;headline&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Behavior&quot;}, &quot;includeFxDefault&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Behavior&quot;}, &quot;liveUsdHkd&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 7.8412, &quot;min&quot;: 7.75, &quot;max&quot;: 7.9, &quot;step&quot;: 0.0001, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Behavior&quot;}}">
+class Component extends DCLogic {
+  state = {
+    loaded: false, tab: 'overview', period: '2026-ytd', mode: null, fxMode: 'live',
+    fxManual: 7.8430, includeFx: null, compare: false, search: '', uniFilter: '',
+    expanded: {}, expandedBooks: {},
+    fBook: 'All', fTrader: 'All', fAction: 'All', fAsset: 'All'
+  };
+
+  componentDidMount() {
+    import('./blotter-data.js').then(m => {
+      this.M = m;
+      this.data = m.getBlotterData();
+      this.setState({ loaded: true });
+    });
+    this.charts = {};
+    this._poll = setInterval(() => {
+      if (window.Highcharts) { clearInterval(this._poll); this.hcReady = true; this.drawAll(); }
+    }, 150);
+  }
+  componentWillUnmount() { clearInterval(this._poll); }
+  componentDidUpdate() { this.drawAll(); }
+
+  // -------- derived config --------
+  cfg() {
+    const s = this.state;
+    return {
+      mode: s.mode ?? (this.props.defaultMode ?? 'headline'),
+      includeFx: s.includeFx ?? (this.props.includeFxDefault ?? true),
+      fx: s.fxMode === 'live' ? (this.props.liveUsdHkd ?? 7.8412) : (Number(s.fxManual) || 7.8430)
+    };
+  }
+  filterFn() {
+    const s = this.state;
+    return t => (s.fBook === 'All' || t.book === s.fBook) && (s.fTrader === 'All' || t.trader === s.fTrader) &&
+      (s.fAction === 'All' || t.action === s.fAction) && (s.fAsset === 'All' || t.assetClass === s.fAsset);
+  }
+  calc() {
+    if (!this.data) return null;
+    const M = this.M, d = this.data, s = this.state, c = this.cfg();
+    const period = d.periods.find(p => p.key === s.period) || d.periods[0];
+    const f = this.filterFn();
+    const curTrades = M.periodTrades(d.trades, period.year, period.mStart, period.mEnd).filter(f);
+    const prvTrades = M.periodTrades(d.trades, period.prior, period.mStart, period.mEnd).filter(f);
+    const raw = M.bucketSummaryP(curTrades, prvTrades, c.fx);
+    const hl = M.headlineRows(raw);
+    let rows;
+    if (c.mode === 'variance') {
+      rows = raw.map((r, i) => ({ ...r, cN: r.cN - hl[i].cN, cR: r.cR - hl[i].cR, pN: null, pR: null, dN: null, dR: null }));
+    } else rows = c.mode === 'headline' ? hl : raw;
+    const total = M.totalRow(rows, c.includeFx);
+    return { M, d, c, period, raw, hl, rows, total, curTrades, prvTrades, variance: raw.map((r, i) => ({ bucket: r.bucket, vN: r.cN - hl[i].cN, vR: r.cR - hl[i].cR, hN: hl[i].cN, hR: hl[i].cR, rN: r.cN, rR: r.cR })) };
+  }
+
+  cell(t, c, w) { return { t: t == null ? '-' : String(t), c: c || '#374151', w: w || 400 }; }
+
+  buildDetail(x) {
+    const { M, c, curTrades } = x;
+    const tab = this.state.tab;
+    const money = n => 'USD ' + M.fmtM(n);
+    const recent = (trades, mk) => trades.slice().sort((a, b) => b.date < a.date ? -1 : 1).slice(0, 12).map(mk);
+    if (tab === 'structured-fi') {
+      const tr = curTrades.filter(t => ['Structured Rate', 'Structured Credit (Flow)', 'FX'].includes(t.assetClass));
+      const byBook = M.groupSum(tr, t => t.assetClass + ' · ' + t.book, c.fx);
+      return {
+        note: 'Structured FI combines structured rate, structured credit and FX. FX is included in the default total policy — switch to ex-FX in the topbar to strip it out.',
+        tiles: [
+          { name: 'SFI revenue', amount: money(tr.reduce((a, t) => a + t.mssRev, 0)), sub: tr.length + ' tickets YTD' },
+          { name: 'SFI headline notional', amount: money(tr.reduce((a, t) => a + M.headlineNotional(t, c.fx), 0)), sub: 'New trades only' },
+          { name: 'FX bucket revenue', amount: money(tr.filter(t => t.assetClass === 'FX').reduce((a, t) => a + t.mssRev, 0)), sub: 'Included in totals by default' },
+          { name: 'Active books', amount: String(new Set(tr.map(t => t.book)).size), sub: [...new Set(tr.map(t => t.book))].slice(0, 2).join(', ') + '…' }
+        ],
+        c1Title: 'Revenue by asset · book', c2Title: 'Monthly SFI revenue', c3Title: 'Revenue mix by class',
+        leftTitle: 'By asset class and book', leftGrid: 'minmax(190px,1.7fr) repeat(3,minmax(86px,1fr))',
+        leftCols: ['Asset · Book', 'Notional', 'Revenue', 'Rows'],
+        leftRows: byBook.map(g => ({ cells: [this.cell(g.key, '#16181d', 700), this.cell(money(g.notional)), this.cell(money(g.revenue)), this.cell(g.count)] })),
+        rightTitle: 'Recent tickets', rightGrid: '64px minmax(120px,1.5fr) minmax(130px,1.4fr) 58px minmax(84px,1fr) minmax(80px,1fr)',
+        rightCols: ['Date', 'Trade ID', 'Underlying', 'Action', 'Notional', 'Revenue'],
+        rightRows: recent(tr, t => ({ cells: [this.cell(t.date.slice(5)), this.cell(t.id, '#16181d', 700), this.cell(t.underlying), this.cell(t.action, t.action === 'Unwind' ? '#b91c1c' : t.action === 'Roll' ? '#b45309' : '#15803d', 700), this.cell(M.fmtM(t.notionalUsd)), this.cell(M.fmtM(t.mssRev))] })),
+        _trades: tr
+      };
+    }
+    if (tab === 'illiquid') {
+      const tr = curTrades.filter(t => ['Illiquid Credit', 'Repack'].includes(t.assetClass));
+      const byU = M.groupSum(tr, t => t.underlying, c.fx);
+      return {
+        note: 'Illiquid credit positions and repack SPVs share one summary bucket. Notional below is headline (new trades only); unwinds net out of exposure, not headline.',
+        tiles: [
+          { name: 'Bucket revenue', amount: money(tr.reduce((a, t) => a + t.mssRev, 0)), sub: tr.length + ' tickets YTD' },
+          { name: 'Headline notional', amount: money(tr.reduce((a, t) => a + M.headlineNotional(t, c.fx), 0)), sub: 'New trades only' },
+          { name: 'Illiquid vs Repack', amount: tr.filter(t => t.assetClass === 'Illiquid Credit').length + ' / ' + tr.filter(t => t.assetClass === 'Repack').length, sub: 'ticket split' },
+          { name: 'Names traded', amount: String(byU.length), sub: 'distinct underlyings' }
+        ],
+        c1Title: 'Revenue by underlying', c2Title: 'Illiquid vs Repack notional', c3Title: 'Monthly revenue',
+        leftTitle: 'By underlying', leftGrid: 'minmax(170px,1.7fr) repeat(3,minmax(86px,1fr))',
+        leftCols: ['Underlying', 'Notional', 'Revenue', 'Rows'],
+        leftRows: byU.map(g => ({ cells: [this.cell(g.key, '#16181d', 700), this.cell(money(g.notional)), this.cell(money(g.revenue)), this.cell(g.count)] })),
+        rightTitle: 'Recent tickets', rightGrid: '64px minmax(120px,1.5fr) minmax(130px,1.4fr) 58px minmax(84px,1fr) minmax(80px,1fr)',
+        rightCols: ['Date', 'Trade ID', 'Underlying', 'Action', 'Notional', 'Revenue'],
+        rightRows: recent(tr, t => ({ cells: [this.cell(t.date.slice(5)), this.cell(t.id, '#16181d', 700), this.cell(t.underlying), this.cell(t.action, t.action === 'Unwind' ? '#b91c1c' : '#15803d', 700), this.cell(M.fmtM(t.notionalUsd)), this.cell(M.fmtM(t.mssRev))] })),
+        _trades: tr
+      };
+    }
+    if (tab === 'collar') {
+      const tr = curTrades.filter(t => t.assetClass === 'Collar');
+      const byU = M.groupSum(tr, t => t.underlying, c.fx);
+      const incomplete = tr.filter(t => t.pairing === 'Incomplete').length;
+      return {
+        note: incomplete ? incomplete + ' incomplete collar pairing(s) flagged — a put or call leg is missing its counterpart. See QA / Exceptions.' : 'No incomplete collar pairings detected in the current period.',
+        tiles: [
+          { name: 'New notional', amount: money(tr.reduce((a, t) => a + M.headlineNotional(t, c.fx), 0)), sub: tr.length + ' strategies YTD' },
+          { name: 'MSS revenue', amount: money(tr.reduce((a, t) => a + t.mssRev, 0)), sub: 'ex PB fee' },
+          { name: 'Bank revenue', amount: money(tr.reduce((a, t) => a + t.bankRev, 0)), sub: 'incl PB fee' },
+          { name: 'Incomplete pairs', amount: String(incomplete), sub: incomplete ? 'flagged in QA' : 'all paired' }
+        ],
+        c1Title: 'New notional by underlying', c2Title: 'MSS vs bank revenue', c3Title: 'Monthly MSS revenue',
+        leftTitle: 'By underlying', leftGrid: 'minmax(90px,1.2fr) 66px repeat(3,minmax(86px,1fr))',
+        leftCols: ['Underlying', 'Strats', 'New Notional', 'MSS Rev', 'Bank Rev'],
+        leftRows: byU.map(g => ({ cells: [this.cell(g.key, '#16181d', 700), this.cell(g.count), this.cell(money(g.notional)), this.cell(money(g.revenue)), this.cell(money(g.bank))] })),
+        rightTitle: 'Recent strategies', rightGrid: '64px minmax(80px,1fr) 58px minmax(84px,1fr) minmax(80px,1fr) 78px',
+        rightCols: ['Date', 'Underlying', 'Action', 'Notional', 'MSS Rev', 'Pairing'],
+        rightRows: recent(tr, t => ({ cells: [this.cell(t.date.slice(5)), this.cell(t.underlying, '#16181d', 700), this.cell(t.action, t.action === 'Unwind' ? '#b91c1c' : '#15803d', 700), this.cell(M.fmtM(t.notionalUsd)), this.cell(M.fmtM(t.mssRev)), this.cell(t.pairing, t.pairing === 'Incomplete' ? '#b45309' : '#15803d', 700)] })),
+        _trades: tr
+      };
+    }
+    // equity-trs
+    const tr = curTrades.filter(t => t.assetClass === 'Equity TRS');
+    const byU = M.groupSum(tr, t => t.underlying, c.fx);
+    return {
+      note: 'TRS headline notional converts HKD local notional at the selected USDHKD override (' + this.cfg().fx.toFixed(4) + '). Net exposure signs unwinds negative; rolls are flat.',
+      tiles: [
+        { name: 'Headline new notional', amount: money(tr.reduce((a, t) => a + M.headlineNotional(t, c.fx), 0)), sub: 'HKD converted at ' + this.cfg().fx.toFixed(4) },
+        { name: 'Gross MSS revenue', amount: money(tr.reduce((a, t) => a + t.mssRev, 0)), sub: tr.length + ' events YTD' },
+        { name: 'Gross bank revenue', amount: money(tr.reduce((a, t) => a + t.bankRev, 0)), sub: 'incl PB fee' },
+        { name: 'Net exposure', amount: money(tr.reduce((a, t) => a + t.sign * t.notionalUsd, 0)), sub: 'signed by action' }
+      ],
+      c1Title: 'Headline notional by underlying', c2Title: 'Net exposure by underlying', c3Title: 'Monthly MSS revenue',
+      leftTitle: 'By underlying', leftGrid: 'minmax(84px,1fr) 52px repeat(4,minmax(84px,1fr))',
+      leftCols: ['Underlying', 'Rows', 'Headline Ntl', 'MSS Rev', 'Bank Rev', 'Net Exposure'],
+      leftRows: byU.map(g => ({ cells: [this.cell(g.key, '#16181d', 700), this.cell(g.count), this.cell(money(g.notional)), this.cell(money(g.revenue)), this.cell(money(g.bank)), this.cell(money(g.net), g.net >= 0 ? '#15803d' : '#b91c1c', 700)] })),
+      rightTitle: 'Recent events', rightGrid: '64px minmax(110px,1.4fr) minmax(70px,1fr) 58px minmax(84px,1fr) minmax(80px,1fr)',
+      rightCols: ['Date', 'Reference', 'Underlying', 'Action', 'Notional', 'MSS Rev'],
+      rightRows: recent(tr, t => ({ cells: [this.cell(t.date.slice(5)), this.cell(t.id, '#16181d', 700), this.cell(t.underlying), this.cell(t.action, t.action === 'Unwind' ? '#b91c1c' : t.action === 'Roll' ? '#b45309' : '#15803d', 700), this.cell(M.fmtM(t.notionalUsd)), this.cell(M.fmtM(t.mssRev))] })),
+      _trades: tr
+    };
+  }
+
+  // -------- charts --------
+  hc(type, extra) {
+    return Object.assign({
+      chart: { type, backgroundColor: 'transparent', style: { fontFamily: 'Arial,Helvetica,sans-serif' }, height: 225, spacing: [8, 4, 4, 4] },
+      title: { text: null }, credits: { enabled: false }, exporting: { enabled: false },
+      legend: { itemStyle: { fontSize: '10px' } },
+      xAxis: { labels: { style: { fontSize: '10px' } }, lineColor: '#e2e4e8', tickColor: '#e2e4e8' },
+      yAxis: { title: { text: null }, labels: { style: { fontSize: '10px' } }, gridLineColor: '#f1f2f4' },
+      tooltip: { shared: true, valueDecimals: 0 },
+      plotOptions: { series: { animation: false, borderRadius: 2 } }
+    }, extra || {});
+  }
+  chart(id, opts) {
+    const el = document.getElementById(id);
+    if (!el || !window.Highcharts) return;
+    try {
+      if (this.charts[id]) this.charts[id].destroy();
+      this.charts[id] = Highcharts.chart(id, opts);
+    } catch (e) { el.innerHTML = '<div style="padding:30px;text-align:center;color:#6b7280;font-size:11px">Chart unavailable</div>'; }
+  }
+  drawAll() {
+    if (!this.hcReady || !this.state.loaded) return;
+    cancelAnimationFrame(this._raf);
+    this._raf = requestAnimationFrame(() => {
+      const x = this.calc(); if (!x) return;
+      const { M, c, raw, curTrades, prvTrades, period, variance } = x;
+      const RED = '#db0011', GRAY = '#9ca3af', INK = '#374151', TEAL = '#0f766e';
+      const short = b => b.replace('Structured ', 'Str ').replace(' (Flow)', '').replace('Illiquid Credit + Repack', 'Illq+Repack');
+      const cats = raw.map(r => short(r.bucket));
+      const t = this.state.tab;
+      // destroy charts whose container vanished
+      Object.keys(this.charts).forEach(id => { if (!document.getElementById(id)) { try { this.charts[id].destroy(); } catch (e) {} delete this.charts[id]; } });
+      if (t === 'overview') {
+        this.chart('a-ov1', this.hc('column', { xAxis: { categories: cats }, series: [{ name: String(period.year), color: RED, data: raw.map(r => Math.round(r.cR)) }, { name: String(period.prior), color: GRAY, data: raw.map(r => Math.round(r.pR)) }] }));
+        this.chart('a-ov2', this.hc('bar', { xAxis: { categories: cats }, legend: { enabled: false }, series: [{ name: 'Headline notional', color: INK, data: raw.map(r => Math.round(r.cN)) }] }));
+        const mc = M.monthlySeries(curTrades, period.year, tt => tt.mssRev);
+        const mp = M.monthlySeries(prvTrades, period.prior, tt => tt.mssRev);
+        this.chart('a-ov3', this.hc('line', { xAxis: { categories: mc.cats }, series: [{ name: String(period.year), color: RED, data: mc.vals.map(Math.round) }, { name: String(period.prior), color: GRAY, dashStyle: 'ShortDash', data: mp.vals.map(Math.round) }] }));
+        const cum = a => a.reduce((acc, v) => (acc.push((acc[acc.length - 1] || 0) + v), acc), []);
+        this.chart('a-ov4', this.hc('area', { xAxis: { categories: mc.cats }, plotOptions: { area: { fillOpacity: .12, animation: false } }, series: [{ name: String(period.year), color: RED, data: cum(mc.vals).map(Math.round) }, { name: String(period.prior), color: GRAY, data: cum(mp.vals).map(Math.round) }] }));
+        this.chart('a-ov5', this.hc('pie', { plotOptions: { pie: { innerSize: '55%', animation: false, dataLabels: { style: { fontSize: '10px' }, distance: 12 } } }, tooltip: { shared: false }, series: [{ name: 'Tickets', data: raw.map((r, i) => ({ name: short(r.bucket), y: r.count, color: [RED, '#a3000d', INK, GRAY, TEAL, '#b45309'][i] })) }] }));
+        const books = [...new Set(curTrades.map(tt => tt.book))];
+        const heat = [];
+        books.forEach((b, xi) => raw.forEach((r, yi) => {
+          const v = curTrades.filter(tt => tt.book === b && tt.bucket === r.bucket).reduce((a, tt) => a + tt.mssRev, 0);
+          heat.push([xi, yi, Math.round(v)]);
+        }));
+        this.chart('a-ov6', this.hc('heatmap', { xAxis: { categories: books, labels: { style: { fontSize: '9px' } } }, yAxis: { categories: raw.map(r => short(r.bucket)), title: null, labels: { style: { fontSize: '9px' } } }, colorAxis: { min: 0, minColor: '#ffffff', maxColor: RED }, legend: { enabled: false }, tooltip: { shared: false }, series: [{ borderWidth: 1, borderColor: '#f1f2f4', data: heat }] }));
+      }
+      if (['structured-fi', 'illiquid', 'collar', 'equity-trs'].includes(t)) {
+        const det = this.buildDetail(x); const tr = det._trades;
+        const mm = M.monthlySeries(tr, period.year, tt => tt.mssRev);
+        if (t === 'structured-fi') {
+          const g = M.groupSum(tr, tt => short(tt.assetClass) + '·' + tt.book.replace('HBAP-', '').replace('HBEU-', 'EU-'), c.fx);
+          this.chart('a-det1', this.hc('column', { xAxis: { categories: g.map(v => v.key), labels: { style: { fontSize: '9px' } } }, legend: { enabled: false }, series: [{ name: 'Revenue', color: RED, data: g.map(v => Math.round(v.revenue)) }] }));
+          this.chart('a-det2', this.hc('line', { xAxis: { categories: mm.cats }, legend: { enabled: false }, series: [{ name: 'Revenue', color: RED, data: mm.vals.map(Math.round) }] }));
+          const byCls = M.groupSum(tr, tt => tt.assetClass, c.fx);
+          this.chart('a-det3', this.hc('pie', { plotOptions: { pie: { innerSize: '55%', animation: false, dataLabels: { style: { fontSize: '10px' } } } }, tooltip: { shared: false }, series: [{ name: 'Revenue', data: byCls.map((v, i) => ({ name: short(v.key), y: Math.round(v.revenue), color: [RED, INK, GRAY][i] })) }] }));
+        } else if (t === 'illiquid') {
+          const g = M.groupSum(tr, tt => tt.underlying, c.fx);
+          this.chart('a-det1', this.hc('bar', { xAxis: { categories: g.map(v => v.key), labels: { style: { fontSize: '9px' } } }, legend: { enabled: false }, series: [{ name: 'Revenue', color: RED, data: g.map(v => Math.round(v.revenue)) }] }));
+          const byCls = M.groupSum(tr, tt => tt.assetClass, c.fx);
+          this.chart('a-det2', this.hc('column', { xAxis: { categories: byCls.map(v => v.key) }, legend: { enabled: false }, series: [{ name: 'Notional', color: INK, data: byCls.map(v => Math.round(v.notional)) }] }));
+          this.chart('a-det3', this.hc('line', { xAxis: { categories: mm.cats }, legend: { enabled: false }, series: [{ name: 'Revenue', color: RED, data: mm.vals.map(Math.round) }] }));
+        } else if (t === 'collar') {
+          const g = M.groupSum(tr, tt => tt.underlying, c.fx);
+          this.chart('a-det1', this.hc('bar', { xAxis: { categories: g.map(v => v.key) }, legend: { enabled: false }, series: [{ name: 'New notional', color: RED, data: g.map(v => Math.round(v.notional)) }] }));
+          this.chart('a-det2', this.hc('column', { xAxis: { categories: g.map(v => v.key) }, series: [{ name: 'MSS', color: INK, data: g.map(v => Math.round(v.revenue)) }, { name: 'Bank', color: TEAL, data: g.map(v => Math.round(v.bank)) }] }));
+          this.chart('a-det3', this.hc('line', { xAxis: { categories: mm.cats }, legend: { enabled: false }, series: [{ name: 'MSS revenue', color: RED, data: mm.vals.map(Math.round) }] }));
+        } else {
+          const g = M.groupSum(tr, tt => tt.underlying, c.fx);
+          this.chart('a-det1', this.hc('bar', { xAxis: { categories: g.map(v => v.key) }, legend: { enabled: false }, series: [{ name: 'Headline notional', color: RED, data: g.map(v => Math.round(v.notional)) }] }));
+          this.chart('a-det2', this.hc('bar', { xAxis: { categories: g.map(v => v.key) }, legend: { enabled: false }, series: [{ name: 'Net exposure', data: g.map(v => ({ y: Math.round(v.net), color: v.net >= 0 ? '#15803d' : RED })) }] }));
+          this.chart('a-det3', this.hc('line', { xAxis: { categories: mm.cats }, legend: { enabled: false }, series: [{ name: 'MSS revenue', color: RED, data: mm.vals.map(Math.round) }] }));
+        }
+      }
+      if (t === 'reconciliation') {
+        this.chart('a-rc1', this.hc('column', { chart: { type: 'column', backgroundColor: 'transparent', height: 235, style: { fontFamily: 'Arial' } }, xAxis: { categories: cats }, legend: { enabled: false }, series: [{ name: 'Notional variance', data: variance.map(v => ({ y: Math.round(v.vN), color: v.vN >= 0 ? '#15803d' : RED })) }] }));
+        this.chart('a-rc2', this.hc('column', { xAxis: { categories: cats }, legend: { enabled: false }, series: [{ name: 'Revenue variance', data: variance.map(v => ({ y: Math.round(v.vR), color: v.vR >= 0 ? '#15803d' : RED })) }] }));
+      }
+      if (t === 'unified') {
+        const byCls = M.groupSum(curTrades, tt => tt.assetClass, c.fx);
+        this.chart('a-un1', this.hc('pie', { plotOptions: { pie: { innerSize: '55%', animation: false, dataLabels: { style: { fontSize: '10px' } } } }, tooltip: { shared: false }, series: [{ name: 'Rows', data: byCls.map((v, i) => ({ name: short(v.key), y: v.count, color: [RED, '#a3000d', INK, GRAY, TEAL, '#b45309', '#1d4ed8'][i] })) }] }));
+        this.chart('a-un2', this.hc('column', { xAxis: { categories: byCls.map(v => short(v.key)), labels: { style: { fontSize: '9px' } } }, legend: { enabled: false }, series: [{ name: 'Revenue', color: RED, data: byCls.map(v => Math.round(v.revenue)) }] }));
+        const mcount = M.monthlySeries(curTrades, period.year, () => 1);
+        this.chart('a-un3', this.hc('column', { xAxis: { categories: mcount.cats }, legend: { enabled: false }, series: [{ name: 'Tickets', color: INK, data: mcount.vals }] }));
+      }
+      if (t === 'qa') {
+        const issues = this.data.qaIssues;
+        const types = [...new Set(issues.map(i => i.type))];
+        this.chart('a-qa1', this.hc('column', { xAxis: { categories: types, labels: { style: { fontSize: '9px' } } }, legend: { enabled: false }, series: [{ name: 'Count', color: RED, data: types.map(ty => issues.filter(i => i.type === ty).length) }] }));
+        this.chart('a-qa2', this.hc('pie', { plotOptions: { pie: { innerSize: '55%', animation: false, dataLabels: { style: { fontSize: '10px' } } } }, tooltip: { shared: false }, series: [{ name: 'Severity', data: [{ name: 'warn', y: issues.filter(i => i.severity === 'warn').length, color: '#b45309' }, { name: 'info', y: issues.filter(i => i.severity === 'info').length, color: '#1d4ed8' }] }] }));
+      }
+    });
+  }
+
+  exportCsvFn(x) {
+    const rows = [['Bucket', 'Current Notional', 'Current Revenue', 'Prior Notional', 'Prior Revenue', 'Delta Notional Pct', 'Delta Revenue Pct'],
+      ...x.rows.map(r => [r.bucket, Math.round(r.cN), Math.round(r.cR), r.pN == null ? '' : Math.round(r.pN), r.pR == null ? '' : Math.round(r.pR), r.dN == null ? '' : (r.dN * 100).toFixed(2), r.dR == null ? '' : (r.dR * 100).toFixed(2)]),
+      [x.total.bucket, Math.round(x.total.cN), Math.round(x.total.cR), Math.round(x.total.pN || 0), Math.round(x.total.pR || 0), '', '']];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'wsg_blotter_main_summary.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const NAVDEF = [
+      ['overview', 'Overview'], ['structured-fi', 'Structured FI'], ['illiquid', 'Illiquid / Repack'],
+      ['collar', 'Collar'], ['equity-trs', 'Equity TRS'], ['reconciliation', 'Reconciliation'],
+      ['unified', 'Unified Main Table'], ['input', 'Input Data'], ['qa', 'QA / Exceptions'], ['info', 'More Info']
+    ];
+    const base = {
+      search: s.search,
+      setSearch: e => this.setState({ search: e.target.value }),
+      nav: NAVDEF.map(([key, label]) => ({
+        label, key,
+        active: s.tab === key,
+        bg: s.tab === key ? 'rgba(219,0,17,.14)' : 'transparent',
+        bl: s.tab === key ? '#db0011' : 'transparent',
+        color: s.tab === key ? '#fff' : '#b6bac2',
+        w: s.tab === key ? 700 : 400,
+        badge: key === 'qa' ? '8' : '', badgeBg: key === 'qa' ? '#b45309' : 'transparent',
+        click: () => this.setState({ tab: key })
+      })),
+      viewTitle: (NAVDEF.find(n => n[0] === s.tab) || NAVDEF[0])[1],
+      periods: this.data ? this.data.periods : [],
+      periodKey: s.period, setPeriod: e => this.setState({ period: e.target.value }),
+      mode: this.cfg().mode, setMode: e => this.setState({ mode: e.target.value }),
+      fBook: s.fBook, fTrader: s.fTrader, fAction: s.fAction, fAsset: s.fAsset,
+      setFBook: e => this.setState({ fBook: e.target.value }),
+      setFTrader: e => this.setState({ fTrader: e.target.value }),
+      setFAction: e => this.setState({ fAction: e.target.value }),
+      setFAsset: e => this.setState({ fAsset: e.target.value }),
+      resetFilters: () => this.setState({ fBook: 'All', fTrader: 'All', fAction: 'All', fAsset: 'All' }),
+      bookOpts: this.data ? ['All', ...this.M.distinctValues(this.data.trades, 'book')] : ['All'],
+      traderOpts: this.data ? ['All', ...this.M.distinctValues(this.data.trades, 'trader')] : ['All'],
+      actionOpts: ['All', 'New', 'Unwind', 'Roll'],
+      assetOpts: this.M ? ['All', ...this.M.ASSET_CLASSES] : ['All'],
+      filtersActive: s.fBook !== 'All' || s.fTrader !== 'All' || s.fAction !== 'All' || s.fAsset !== 'All',
+      fxMode: s.fxMode, setFxMode: e => this.setState({ fxMode: e.target.value }),
+      fxVal: this.cfg().fx.toFixed(4), fxDisabled: s.fxMode === 'live',
+      setFxManual: e => this.setState({ fxManual: e.target.value }),
+      includeFxStr: String(this.cfg().includeFx), setIncludeFx: e => this.setState({ includeFx: e.target.value === 'true' }),
+      compareOn: s.compare, toggleCompare: () => this.setState({ compare: !s.compare }),
+      compareLabel: s.compare ? 'Compare: on' : 'Compare periods',
+      compareBg: s.compare ? '#fff1f2' : '#fff', compareBorder: s.compare ? '#db0011' : '#d1d5db', compareColor: s.compare ? '#db0011' : '#16181d',
+      printSummary: () => window.print(),
+      fxLiveFmt: (this.props.liveUsdHkd ?? 7.8412).toFixed(4),
+      filename: 'wsg_flat_blotter_2026-07-03.xlsx', loadedAt: '2026-07-06 08:12 HKT',
+      isOverview: s.tab === 'overview',
+      isDetail: ['structured-fi', 'illiquid', 'collar', 'equity-trs'].includes(s.tab),
+      isRecon: s.tab === 'reconciliation', isUnified: s.tab === 'unified',
+      isInput: s.tab === 'input', isQa: s.tab === 'qa', isInfo: s.tab === 'info',
+      hasSearchResults: false, searchResults: [],
+      kpis: [], summaryRows: [], tot: {}, cmpCur: [], cmpPrv: [], cmpCurTitle: '', cmpPrvTitle: '', modeNote: '',
+      detail: { tiles: [], leftCols: [], leftRows: [], rightCols: [], rightRows: [], leftGrid: '1fr', rightGrid: '1fr', note: '', c1Title: '', c2Title: '', c3Title: '', leftTitle: '', rightTitle: '' },
+      recCols: [], recRows: [], recGrid: '1fr', uniCols: [], uniRows: [], uniGrid: '1fr', uniCount: '', uniFilter: s.uniFilter,
+      setUniFilter: e => this.setState({ uniFilter: e.target.value }),
+      inputCols: [], inputRows: [], inputGrid: '1fr', inputRowCount: '', qaCols: [], qaRows: [], qaGrid: '1fr',
+      exportCsv: () => {}
+    };
+    const x = this.calc();
+    if (!x) return base;
+    const { M, c, period, rows, total, curTrades, prvTrades, variance, hl, raw } = x;
+    const money = n => n == null ? '-' : 'USD ' + M.fmtM(n);
+
+    base.exportCsv = () => this.exportCsvFn(x);
+
+    // search
+    if (s.search.trim().length >= 2) {
+      const q = s.search.trim().toLowerCase();
+      const res = curTrades.filter(t => (t.id + ' ' + t.underlying + ' ' + t.customer + ' ' + t.book).toLowerCase().includes(q)).slice(0, 6);
+      base.searchResults = res.map(t => ({
+        id: t.id, sub: t.underlying + ' · ' + t.customer + ' · ' + money(t.notionalUsd),
+        click: () => this.setState({ tab: 'unified', uniFilter: t.id, search: '' })
+      }));
+      base.hasSearchResults = res.length > 0;
+    }
+
+    // KPIs
+    base.modeNote = c.mode === 'headline'
+      ? 'Headline mode — curated workbook summary figures. Raw rebuild and variance remain available for control. Totals ' + (c.includeFx ? 'include' : 'exclude') + ' FX.'
+      : c.mode === 'raw'
+        ? 'Raw rebuild mode — figures rebuilt directly from ' + curTrades.length + ' unified fact rows. Totals ' + (c.includeFx ? 'include' : 'exclude') + ' FX.'
+        : 'Variance mode — showing raw rebuild minus curated headline per bucket. Non-zero cells indicate curated adjustments.';
+    base.kpis = [
+      { label: 'Current notional', value: money(total.cN), sub: c.mode === 'variance' ? 'raw minus headline' : M.fmtPct(total.dN) + ' vs prior', subc: c.mode === 'variance' ? '#6b7280' : M.pctColor(total.dN) },
+      { label: 'Current revenue', value: money(total.cR), sub: c.mode === 'variance' ? 'raw minus headline' : M.fmtPct(total.dR) + ' vs prior', subc: c.mode === 'variance' ? '#6b7280' : M.pctColor(total.dR) },
+      { label: 'Prior notional', value: money(total.pN), sub: period.prior + ' comparable window', subc: '#6b7280' },
+      { label: 'Prior revenue', value: money(total.pR), sub: period.prior + ' comparable window', subc: '#6b7280' },
+      { label: 'TRS FX override', value: c.fx.toFixed(4), sub: s.fxMode === 'live' ? 'Live USDHKD feed' : 'Manual override', subc: s.fxMode === 'live' ? '#15803d' : '#b45309' },
+      { label: 'Input rows', value: String(curTrades.length), sub: period.label, subc: '#6b7280' }
+    ];
+
+    // compare panel
+    base.cmpCurTitle = period.year + ' YTD through 07-03';
+    base.cmpPrvTitle = period.prior + ' YTD through 07-03';
+    const mkCmp = (rws, totRow) => [
+      ...rws.map(r => ({ label: r.bucket, n: M.fmtM(r.n), r: 'USD ' + M.fmtM(r.r), w: 400 })),
+      { label: totRow.label, n: M.fmtM(totRow.n), r: 'USD ' + M.fmtM(totRow.r), w: 700 }
+    ];
+    const curSide = raw.map(r => ({ bucket: r.bucket, n: r.cN, r: r.cR }));
+    const prvSide = raw.map(r => ({ bucket: r.bucket, n: r.pN, r: r.pR }));
+    base.cmpCur = mkCmp(curSide, { label: 'Total incl FX', n: curSide.reduce((a, r) => a + r.n, 0), r: curSide.reduce((a, r) => a + r.r, 0) });
+    base.cmpPrv = mkCmp(prvSide, { label: 'Total incl FX', n: prvSide.reduce((a, r) => a + r.n, 0), r: prvSide.reduce((a, r) => a + r.r, 0) });
+
+    // summary rows (expandable)
+    const srows = [];
+    rows.forEach(r => {
+      const open = !!s.expanded[r.bucket];
+      srows.push({
+        label: r.bucket, caret: open ? '▾' : '▸', indent: '10px', w: 700, lc: '#16181d', bg: '#fff', mc: '#374151',
+        g2: money(r.cN), g3: money(r.cR), g4: money(r.pN), g5: money(r.pR),
+        g6: M.fmtPct(r.dN), g7: M.fmtPct(r.dR), c6: M.pctColor(r.dN), c7: M.pctColor(r.dR), g8: String(r.count),
+        click: () => this.setState({ expanded: { ...s.expanded, [r.bucket]: !open } })
+      });
+      if (open) r.books.forEach(b => {
+        const bkey = r.bucket + '|' + b.book;
+        const bopen = !!s.expandedBooks[bkey];
+        srows.push({
+          label: b.book, caret: bopen ? '▾' : '▸', indent: '28px', w: 700, lc: '#4b5563', bg: '#fafbfc', mc: '#9ca3af',
+          g2: money(b.notional), g3: money(b.revenue), g4: '—', g5: '—', g6: '', g7: '', c6: '#6b7280', c7: '#6b7280', g8: String(b.count),
+          click: () => this.setState({ expandedBooks: { ...s.expandedBooks, [bkey]: !bopen } })
+        });
+        if (bopen) b.trades.slice(0, 8).forEach(t => {
+          srows.push({
+            label: t.id + '  ·  ' + t.underlying, caret: '', indent: '46px', w: 400, lc: '#6b7280', bg: '#f7f8fa', mc: '#9ca3af',
+            g2: M.fmtM(t.notionalUsd), g3: M.fmtM(t.mssRev), g4: t.action, g5: t.trader,
+            g6: t.date.slice(5), g7: t.ccy, c6: '#6b7280', c7: '#6b7280', g8: '',
+            click: () => this.setState({ tab: 'unified', uniFilter: t.id })
+          });
+        });
+      });
+    });
+    base.summaryRows = srows;
+    base.tot = {
+      label: total.bucket, g2: money(total.cN), g3: money(total.cR), g4: money(total.pN), g5: money(total.pR),
+      g6: M.fmtPct(total.dN), g7: M.fmtPct(total.dR), c6: M.pctColor(total.dN), c7: M.pctColor(total.dR), g8: String(total.count || '')
+    };
+
+    // detail
+    if (base.isDetail) base.detail = this.buildDetail(x);
+
+    // reconciliation
+    base.recGrid = 'minmax(150px,1.5fr) repeat(6,minmax(92px,1fr))';
+    base.recCols = ['Bucket', 'Headline Ntl', 'Raw Ntl', 'Ntl Variance', 'Headline Rev', 'Raw Rev', 'Rev Variance'];
+    base.recRows = variance.map(v => ({
+      cells: [this.cell(v.bucket, '#16181d', 700), this.cell(money(v.hN)), this.cell(money(v.rN)),
+        this.cell(money(v.vN), v.vN === 0 ? '#6b7280' : v.vN > 0 ? '#15803d' : '#b91c1c', 700),
+        this.cell(money(v.hR)), this.cell(money(v.rR)),
+        this.cell(money(v.vR), v.vR === 0 ? '#6b7280' : v.vR > 0 ? '#15803d' : '#b91c1c', 700)]
+    }));
+
+    // unified
+    base.uniGrid = '62px minmax(112px,1.2fr) minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(120px,1.3fr) 58px minmax(110px,1.2fr) minmax(78px,1fr) minmax(78px,1fr) minmax(78px,1fr)';
+    base.uniCols = ['Date', 'Trade ID', 'Book', 'Asset', 'Underlying', 'Action', 'Client', 'Notional', 'MSS Rev', 'Bank Rev'];
+    const q = s.uniFilter.trim().toLowerCase();
+    const filtered = curTrades.filter(t => !q || (t.id + ' ' + t.book + ' ' + t.assetClass + ' ' + t.underlying + ' ' + t.customer + ' ' + t.action + ' ' + t.trader).toLowerCase().includes(q));
+    base.uniCount = filtered.length + ' of ' + curTrades.length + ' rows' + (q ? ' matching "' + s.uniFilter + '"' : '');
+    base.uniRows = filtered.slice(0, 60).map(t => ({
+      cells: [this.cell(t.date.slice(5)), this.cell(t.id, '#16181d', 700), this.cell(t.book), this.cell(t.assetClass),
+        this.cell(t.underlying), this.cell(t.action, t.action === 'Unwind' ? '#b91c1c' : t.action === 'Roll' ? '#b45309' : '#15803d', 700),
+        this.cell(t.customer), this.cell(M.fmtM(t.notionalUsd)), this.cell(M.fmtM(t.mssRev)), this.cell(M.fmtM(t.bankRev))]
+    }));
+
+    // input data
+    base.inputGrid = 'minmax(112px,1.1fr) 78px minmax(96px,1fr) minmax(78px,.9fr) minmax(110px,1.1fr) 46px minmax(90px,1fr) minmax(80px,.9fr) minmax(80px,.9fr) minmax(180px,1.8fr) minmax(104px,1fr)';
+    base.inputCols = ['*Trade ID', '*Trade Date', 'Tier 1 Product', 'Tier 2 Product', 'Book', 'CCY', '*$ Volume', '*$ PC', '*$ VA/GNBV', 'Comment', 'ISIN Code'];
+    base.inputRowCount = String(curTrades.length);
+    base.inputRows = curTrades.slice(0, 25).map(t => ({
+      cells: [t.id, t.date, t.t1, t.t2, t.book, t.ccy, M.fmtFull(t.notionalUsd), M.fmtFull(Math.round(t.mssRev * .4)), M.fmtFull(t.mssRev),
+        'source_action=' + t.action + (t.pbFee ? ' | pc_source=PB_FEE_USD' : '') + ' | pc_source=desk',
+        t.isin || '—']
+    }));
+
+    // qa
+    base.qaGrid = '64px minmax(130px,1.1fr) minmax(90px,.8fr) minmax(130px,1fr) minmax(260px,2.4fr)';
+    base.qaCols = ['Severity', 'Type', 'Sheet', 'Record', 'Message'];
+    base.qaRows = this.data.qaIssues.map(i => ({
+      cells: [this.cell(i.severity.toUpperCase(), i.severity === 'warn' ? '#b45309' : '#1d4ed8', 700),
+        this.cell(i.type), this.cell(i.sheet), this.cell(i.record, '#16181d', 700), this.cell(i.message, '#4b5563')]
+    }));
+
+    return base;
+  }
+}
+</script>
+</body>
+</html>
