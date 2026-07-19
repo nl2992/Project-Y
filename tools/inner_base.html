@@ -560,7 +560,10 @@
 
     <!-- Status / feedback banner (always visible: sync, import, reset) -->
     <sc-if value="{{ banner.show }}" hint-placeholder-val="{{ false }}">
-      <div style="margin-bottom:18px;padding:11px 15px;border-radius:9px;font-size:12.5px;font-weight:500;animation:bslide .18s ease;background: {{ banner.bg }};color: {{ banner.fg }};border:1px solid {{ banner.border }}">{{ banner.text }}</div>
+      <div style="margin-bottom:18px;padding:11px 15px;border-radius:9px;font-size:12.5px;font-weight:500;animation:bslide .18s ease;background: {{ banner.bg }};color: {{ banner.fg }};border:1px solid {{ banner.border }};display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span>{{ banner.text }}</span>
+        <button class="no-print" sc-camel-on-click="{{ onBannerDismiss }}" aria-label="Dismiss" title="Dismiss" style="flex-shrink:0;background:transparent;border:none;color: {{ banner.fg }};cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;opacity:.7">×</button>
+      </div>
     </sc-if>
 
     <!-- Upload panel -->
@@ -1577,7 +1580,7 @@ class Component extends DCLogic {
     source = source || (filename === 'pasted data' ? 'paste' : 'upload');
     if (!records || !records.length) {
       this.pushHistory({ source, filename: filename || 'pasted data', added: 0, dupes: 0, note: 'No rows found' });
-      this.setState({ banner: this.mkBanner('warn', 'No rows found. Check that the file has a header row and data.') });
+      this.setState({ banner: this.mkBanner('warn', 'No rows found. Check that the file has a header row and data.') }, () => this.armBannerTimer());
       return;
     }
     const derived = records.map(r => this.deriveTrade(r)).filter(t => t.id);
@@ -1591,13 +1594,14 @@ class Component extends DCLogic {
     });
     if (!added.length) {
       this.pushHistory({ source, filename: filename || 'pasted data', added: 0, dupes, note: 'All rows were duplicate Trade IDs' });
-      this.setState({ banner: this.mkBanner('warn', `All ${derived.length} rows were duplicates of trades already saved (matched on Trade ID). Nothing added.`) });
+      this.setState({ banner: this.mkBanner('warn', `All ${derived.length} rows were duplicates of trades already saved (matched on Trade ID). Nothing added.`) }, () => this.armBannerTimer());
       return;
     }
     const trades = this.state.trades.concat(added);
     const batch = { id: 'b' + Date.now(), filename: filename || 'pasted data', when: new Date().toISOString().slice(0, 16).replace('T', ' '), source, added: added.length, dupes };
     const batches = this.state.batches.concat(batch);
     this.setState({ trades, batches, source: 'saved', loadedAt: batch.when, pasteText: '', banner: this.mkBanner('ok', `Imported ${added.length} new trade${added.length === 1 ? '' : 's'} from ${batch.filename}${dupes ? ` \u00b7 ${dupes} duplicate${dupes === 1 ? '' : 's'} skipped (Trade ID already on file)` : ''}. Saved to your workspace.`) }, () => {
+      this.armBannerTimer();
       this.cacheWrite();
       this.pushHistory({ source, filename: batch.filename, added: added.length, dupes, totalAfter: trades.length });
       // Server-side persistence (wiring spec \u00a74B/\u00a76): POST the parsed rows to
@@ -1626,8 +1630,27 @@ class Component extends DCLogic {
   }
   mkBanner(tone, text) {
     const map = { ok: { bg: 'var(--brand-tint)', fg: 'var(--brand)', border: 'var(--brand-tint-line)' }, warn: { bg: 'var(--warn-tint)', fg: 'var(--accent)', border: 'var(--warn-tint-line)' } };
-    return Object.assign({ show: true, text }, map[tone] || map.ok);
+    return Object.assign({ show: true, text, tone }, map[tone] || map.ok);
   }
+  // Arms (or clears) the single auto-dismiss timer for the CURRENT banner in
+  // state. Always clears any pending timer first — this is what keeps a fast
+  // banner-B-replaces-banner-A sequence safe: A's timer never survives long
+  // enough to hide B. Only 'ok' banners get a timer; 'warn' banners persist
+  // until the user dismisses them. Call this as a setState callback, never
+  // synchronously alongside the setState that changes the banner.
+  armBannerTimer() {
+    if (this._bannerTimer) { clearTimeout(this._bannerTimer); this._bannerTimer = null; }
+    if (this.state.banner && this.state.banner.show && this.state.banner.tone === 'ok') {
+      this._bannerTimer = setTimeout(() => {
+        this._bannerTimer = null;
+        this.setState({ banner: { show: false } });
+      }, 6000);
+    }
+  }
+  onBannerDismiss = () => {
+    if (this._bannerTimer) { clearTimeout(this._bannerTimer); this._bannerTimer = null; }
+    this.setState({ banner: { show: false } });
+  };
   // Append-only audit entry (kept even across "Clear all data"). Capped so the
   // log doesn't grow unbounded across a long-lived browser profile.
   pushHistory(entry) {
@@ -1779,7 +1802,7 @@ class Component extends DCLogic {
         source: trades.length ? 'live' : 'empty', loadedAt,
         banner: opts.silent ? this.state.banner
           : this.mkBanner('ok', `Loaded ${trades.length} trade${trades.length === 1 ? '' : 's'} from the workspace store.`)
-      }, () => this.cacheWrite());
+      }, () => { this.cacheWrite(); if (!opts.silent) this.armBannerTimer(); });
       return true;
     } catch (e) {
       // Workspace API unreachable — try the legacy live feed / cache path.
@@ -1797,7 +1820,7 @@ class Component extends DCLogic {
     if (!this.FIRM.enabled) return;
     if (this.state.source === 'syncing') return;               // guard against overlap
     const prevSource = this.state.source;
-    this.setState({ source: 'syncing', banner: opts.silent ? this.state.banner : this.mkBanner('ok', 'Syncing from the firm blotter feed…') });
+    this.setState({ source: 'syncing', banner: opts.silent ? this.state.banner : this.mkBanner('ok', 'Syncing from the firm blotter feed…') }, () => { if (!opts.silent) this.armBannerTimer(); });
     // Server-side sync (skipped when this call is loadWorkspace's own fallback).
     if (!opts.viaLoad && this.FIRM.syncUrl) {
       try {
@@ -1805,7 +1828,7 @@ class Component extends DCLogic {
         const s = (r && r.sync) || {};
         this.pushHistory({ source: 'firm', filename: 'firm blotter feed', added: s.inserted || 0, dupes: s.duplicates || 0, note: 'Server sync' });
         await this.loadWorkspace({ silent: true });
-        if (!opts.silent) this.setState({ banner: this.mkBanner('ok', `Live · synced ${s.inserted != null ? s.inserted : this.state.trades.length} trade${(s.inserted === 1) ? '' : 's'} from the firm feed into the workspace store${s.duplicates ? ` · ${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} skipped` : ''}.`) });
+        if (!opts.silent) this.setState({ banner: this.mkBanner('ok', `Live · synced ${s.inserted != null ? s.inserted : this.state.trades.length} trade${(s.inserted === 1) ? '' : 's'} from the firm feed into the workspace store${s.duplicates ? ` · ${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} skipped` : ''}.`) }, () => this.armBannerTimer());
         return;
       } catch (e) { /* /sync not deployed or unreachable — fall through to the legacy direct pull */ }
     }
@@ -1826,13 +1849,14 @@ class Component extends DCLogic {
         const when = new Date().toISOString().slice(0, 16).replace('T', ' ');
         const batch = { id: 'firm' + Date.now(), filename: 'firm blotter feed', when, source: 'firm', added: trades.length, dupes: feedDupes };
         this.setState({ trades, batches: [batch], source: 'live', loadedAt: when, banner: this.mkBanner('ok', `Live · loaded ${trades.length} trade${trades.length === 1 ? '' : 's'} from the firm blotter feed${feedDupes ? ` · ${feedDupes} duplicate Trade ID${feedDupes === 1 ? '' : 's'} in the feed skipped` : ''}.`) }, () => {
+          this.armBannerTimer();
           this.persist();
           this.pushHistory({ source: 'firm', filename: 'firm blotter feed', added: trades.length, dupes: feedDupes, totalAfter: trades.length });
         });
         return;
       } catch (e) { lastErr = e; }
     }
-    this.setState({ source: prevSource === 'syncing' ? 'empty' : prevSource, banner: opts.silent ? this.state.banner : this.mkBanner('warn', 'Firm blotter feed unreachable — ' + ((prevSource === 'saved') ? 'showing your last saved workspace.' : 'no data loaded. Upload a blotter to begin.') + (lastErr && lastErr.message ? ' (' + lastErr.message + ')' : '')) });
+    this.setState({ source: prevSource === 'syncing' ? 'empty' : prevSource, banner: opts.silent ? this.state.banner : this.mkBanner('warn', 'Firm blotter feed unreachable — ' + ((prevSource === 'saved') ? 'showing your last saved workspace.' : 'no data loaded. Upload a blotter to begin.') + (lastErr && lastErr.message ? ' (' + lastErr.message + ')' : '')) }, () => { if (!opts.silent) this.armBannerTimer(); });
   };
   // Header status pill mapping.
   // Label for the theme toggle. Shows what is ACTIVE, with the follow-OS state
@@ -1876,6 +1900,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     document.removeEventListener('mousedown', this._onColsDocMouseDown);
     document.removeEventListener('keydown', this._onColsDocKeyDown);
+    if (this._bannerTimer) { clearTimeout(this._bannerTimer); this._bannerTimer = null; }
   }
 
   // ---------- firm inference adapter ----------
@@ -1954,11 +1979,11 @@ class Component extends DCLogic {
           const arr = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
           const csv = arr.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
           this.ingest(this.parseDelimited(csv), file.name);
-        } catch (err) { this.setState({ banner: this.mkBanner('warn', 'Could not read workbook. Export the sheet as CSV and try again.') }); }
+        } catch (err) { this.setState({ banner: this.mkBanner('warn', 'Could not read workbook. Export the sheet as CSV and try again.') }, () => this.armBannerTimer()); }
       };
       rd.readAsArrayBuffer(file);
     } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-      this.setState({ banner: this.mkBanner('warn', 'Workbook reader is offline. Paste the sheet as CSV/TSV instead.') });
+      this.setState({ banner: this.mkBanner('warn', 'Workbook reader is offline. Paste the sheet as CSV/TSV instead.') }, () => this.armBannerTimer());
     } else {
       const rd = new FileReader();
       rd.onload = (ev) => this.ingest(this.parseDelimited(ev.target.result), file.name);
@@ -1971,6 +1996,7 @@ class Component extends DCLogic {
   onClear = () => {
     const prevTotal = this.state.trades.length;
     this.setState({ trades: [], batches: [], source: 'empty', loadedAt: '–', uploadOpen: false, banner: this.mkBanner('ok', 'Workspace cleared. Upload a blotter or sync the firm feed to begin.') }, () => {
+      this.armBannerTimer();
       this.cacheWrite();
       this.pushHistory({ source: 'clear', filename: '–', added: 0, dupes: 0, totalAfter: 0, note: `Cleared ${prevTotal} trade${prevTotal === 1 ? '' : 's'} from the workspace` });
       // Clear the persisted workspace too (wiring spec §4E/§6). Trades + batches
@@ -2047,7 +2073,7 @@ class Component extends DCLogic {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      this.setState({ banner: this.mkBanner('warn', 'Could not export CSV. ' + (e && e.message ? e.message : '')) });
+      this.setState({ banner: this.mkBanner('warn', 'Could not export CSV. ' + (e && e.message ? e.message : '')) }, () => this.armBannerTimer());
     }
   };
 
@@ -2696,7 +2722,7 @@ class Component extends DCLogic {
       goldenColumns, goldenRows, goldenShown, goldenTotal: trades.length, goldenBatches: this.state.batches.length, goldenLoaded: this.state.loadedAt, dedupRule: 'Trade ID (exact match, case/whitespace-insensitive)',
       historyRows, historyTotal, historyCount: historyRows.length, historyEmpty: historyRows.length === 0,
       pcva, pcvaLegend, matrixCols, matrixRows,
-      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv,
+      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onBannerDismiss: this.onBannerDismiss,
       onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset
     };
   }
