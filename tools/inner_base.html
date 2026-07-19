@@ -550,6 +550,9 @@
         <span style="background:var(--chrome-chip);border:1px solid var(--chrome-chip-line);padding:5px 11px;border-radius:999px;color:var(--chrome-text-3);white-space:nowrap">Loaded {{ loadedAt }}</span>
         <button class="no-print" sc-camel-on-click="{{ onDensityToggle }}" title="{{ densityTitle }}" aria-label="{{ densityTitle }}" style="display:inline-flex;align-items:center;gap:6px;background:var(--chrome-chip);border:1px solid var(--chrome-chip-line);color:var(--chrome-text-2);padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ densityLabel }}</button>
         <button class="no-print" sc-camel-on-click="{{ onThemeToggle }}" title="{{ themeTitle }}" aria-label="{{ themeTitle }}" style="display:inline-flex;align-items:center;gap:6px;background:var(--chrome-chip);border:1px solid var(--chrome-chip-line);color:var(--chrome-text-2);padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap"><span style="font-size:13px;line-height:1">{{ themeIcon }}</span>{{ themeLabel }}</button>
+        <sc-if value="{{ hasData }}" hint-placeholder-val="{{ false }}">
+          <button class="no-print" sc-camel-on-click="{{ onClearConfirm }}" title="Clear all loaded trades from this workspace (asks first; keeps the upload-history log)" style="display:inline-flex;align-items:center;gap:6px;background:var(--chrome-brand-tint);border:1px solid var(--chrome-brand-line);color:var(--chrome-brand-text);padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Clear</button>
+        </sc-if>
         <button class="no-print" sc-camel-on-click="{{ onSync }}" title="Refresh from the firm blotter feed" style="display:inline-flex;align-items:center;gap:6px;background:var(--chrome-chip);border:1px solid var(--chrome-chip-line);color:var(--chrome-text-2);padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">↻ Sync</button>
         <button class="no-print" sc-camel-on-click="{{ onUploadToggle }}" style="background:var(--brand);border:1px solid var(--brand-line);color:var(--brand-on);padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Upload data</button>
       </div>
@@ -747,7 +750,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
 
       <!-- Custom visual generator: type a request, get a real chart back -->
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--chrome-line)">
-        <div style="font-size:11.5px;color:var(--chrome-text-3);margin-bottom:9px">Describe a visual and the copilot will build it from your current filtered rows — e.g. "revenue by client", "top 5 currencies by volume", "tickets by tenor"</div>
+        <div style="font-size:11.5px;color:var(--chrome-text-3);margin-bottom:9px">Describe a visual and the copilot will build it from your current filtered rows — e.g. "VA/GNBV by client", "top 5 currencies by volume", "tickets by tenor"</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <input value="{{ customViz.query }}" sc-camel-on-change="{{ onCustomVizQuery }}" placeholder="Type what you want to see…" style="flex:1;min-width:240px;background:var(--chrome-chip-2);border:1px solid var(--chrome-chip-line);color:var(--chrome-text);padding:10px 13px;border-radius:8px;font-size:12.5px">
           <button sc-camel-on-click="{{ onRunCustomViz }}" style="background:var(--btn-quiet-bg);color:var(--text);border:none;padding:10px 18px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Generate visual</button>
@@ -886,8 +889,8 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
       <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <div>
-            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Revenue breakdown</div>
-            <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px">Est. bank revenue (PC + VA/GNBV) · vs. same period prior year</div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">GNBV breakdown</div>
+            <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px">VA / GNBV (gross new business value) · vs. same period prior year</div>
           </div>
           <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">Group by
             <sc-raw-select value="{{ f.groupBy }}" sc-camel-on-change="{{ onGroupBy }}" style="border:1px solid var(--line-strong);border-radius:6px;padding:6px 9px;font-size:12px;font-weight:600;color:var(--brand-text);background:var(--brand-on);cursor:pointer">
@@ -935,8 +938,8 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
           </div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
-          <div style="font-size:14px;font-weight:700;letter-spacing:.2px;margin-bottom:2px">Revenue by month</div>
-          <div style="font-size:11.5px;color:var(--text-faintest);margin-bottom:16px">Current period · est. bank revenue</div>
+          <div style="font-size:14px;font-weight:700;letter-spacing:.2px;margin-bottom:2px">VA / GNBV by month</div>
+          <div style="font-size:11.5px;color:var(--text-faintest);margin-bottom:16px">Current period · VA / GNBV</div>
           <div style="display:flex;align-items:flex-end;gap:8px;height:96px">
             <sc-for list="{{ months }}" as="m" hint-placeholder-count="7">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
@@ -950,35 +953,12 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
       </div>
     </div>
 
-    <!-- Compulsory-field visuals: PC/VA split + entity×tier1 matrix + product mix -->
+    <!-- Compulsory-field visuals: entity×tier1 matrix + product mix -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px">
-      <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
-        <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Revenue split · PC vs VA/GNBV</div>
-        <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">The two compulsory economic fields, by asset class</div>
-        <div style="display:flex;gap:18px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:var(--brand)"></span><span style="color:var(--text-3);font-weight:600">PC</span><span style="color:var(--text-faintest);font-variant-numeric:tabular-nums">{{ pcvaLegend.pcText }} · {{ pcvaLegend.pcPct }}</span></div>
-          <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:var(--chrome-brand-text)"></span><span style="color:var(--text-3);font-weight:600">VA/GNBV</span><span style="color:var(--text-faintest);font-variant-numeric:tabular-nums">{{ pcvaLegend.vaText }} · {{ pcvaLegend.vaPct }}</span></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <sc-for list="{{ pcva }}" as="g" hint-placeholder-count="4">
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
-                <span style="color:var(--text-3);font-weight:500">{{ g.key }}</span>
-                <span style="color:var(--text-muted);font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:600">{{ g.totText }}</span>
-              </div>
-              <div style="display:flex;height:12px;border-radius:5px;overflow:hidden;background:var(--surface-track)">
-                <div style="height:100%;background:var(--brand);width: {{ g.pcW }}%"></div>
-                <div style="height:100%;background:var(--chrome-brand-text);width: {{ g.vaW }}%"></div>
-              </div>
-            </div>
-          </sc-for>
-        </div>
-      </div>
-
       <sc-if value="{{ hasEntityMatrix }}" hint-placeholder-val="{{ true }}">
       <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
         <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Legal entity × Asset class</div>
-        <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">Est. revenue heat — compulsory identity field × resolved asset class</div>
+        <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">VA / GNBV heat — compulsory identity field × resolved asset class</div>
         <div style="overflow-x:auto">
           <sc-raw-table style="width:100%;border-collapse:separate;border-spacing:4px;font-size:11.5px">
             <sc-raw-thead>
@@ -1019,7 +999,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
             <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Product mix · Tier 1 → Tier 2</div>
             <div style="font-size:11.5px;color:var(--text-faintest)">{{ productMix.count }} combinations</div>
           </div>
-          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:16px">Est. bank revenue by Tier 2 product, grouped under its parent Tier 1</div>
+          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:16px">VA / GNBV by Tier 2 product, grouped under its parent Tier 1</div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <sc-for list="{{ productMix.rows }}" as="r" hint-placeholder-count="6">
               <div>
@@ -1051,10 +1031,10 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
       <sc-if value="{{ hasCumTrend }}" hint-placeholder-val="{{ true }}">
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
-            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Cumulative revenue · YTD build</div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Cumulative VA / GNBV · YTD build</div>
             <div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">{{ cumTrend.totalText }}</div>
           </div>
-          <div style="font-size:11.5px;color:var(--text-faintest);margin-bottom:16px">Running est. bank revenue across the period</div>
+          <div style="font-size:11.5px;color:var(--text-faintest);margin-bottom:16px">Running VA / GNBV across the period</div>
           <div style="display:flex;align-items:flex-end;gap:3px;height:110px">
             <sc-for list="{{ cumTrend.bars }}" as="b" hint-placeholder-count="7">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
@@ -1091,7 +1071,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
             <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Flow balance · Buy vs Sell</div>
             <div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">{{ flow.totText }}</div>
           </div>
-          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">Directional split of est. bank revenue by trade side</div>
+          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">Directional split of VA / GNBV by trade side</div>
           <div style="display:flex;gap:18px;margin-bottom:14px">
             <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:var(--brand)"></span><span style="color:var(--text-3);font-weight:600">Buy</span><span style="color:var(--text-faintest);font-variant-numeric:tabular-nums">{{ flow.buyText }} · {{ flow.buyPct }}</span></div>
             <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:var(--accent)"></span><span style="color:var(--text-3);font-weight:600">Sell</span><span style="color:var(--text-faintest);font-variant-numeric:tabular-nums">{{ flow.sellText }} · {{ flow.sellPct }}</span></div>
@@ -1116,10 +1096,10 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
       <sc-if value="{{ hasUnderlying }}" hint-placeholder-val="{{ true }}">
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
           <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Top underlyings by revenue</div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Top underlyings by VA / GNBV</div>
             <div style="font-size:11.5px;color:var(--text-faintest)">{{ topUnderlyings.count }} securities</div>
           </div>
-          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:16px">Highest est. bank revenue by underlying / security</div>
+          <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:16px">Highest VA / GNBV by underlying / security</div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <sc-for list="{{ topUnderlyings.rows }}" as="r" hint-placeholder-count="6">
               <div>
@@ -1341,7 +1321,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 2px var(--shadow-xs)">
           <div style="font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px">Metric definitions</div>
           <div style="display:flex;flex-direction:column;gap:13px;font-size:13px;line-height:1.55;color:var(--text-2)">
-            <div><span style="font-weight:700">Est. bank revenue</span> = PC + VA/GNBV — the sum of <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">pc_usd</span> and <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">va_gnbv_usd</span> on each ticket. It is the single revenue figure everything rolls up from.</div>
+            <div><span style="font-weight:700">VA / GNBV</span> = <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">va_gnbv_usd</span> — value-add / gross new business value on each ticket. It is the board's <strong>primary value measure</strong> and the figure every breakdown, ranking and chart rolls up from. (An estimated bank revenue, PC + VA/GNBV, is deliberately not used for plots: <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">pc_usd</span> is sparsely populated, so that sum would be a guess. PC and a raw bank-rev column remain on the trade table for reference.)</div>
             <div><span style="font-weight:700">Volume</span> uses <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">tv_usd</span>, falling back to <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">primary_amount</span> where trade value is absent.</div>
             <div><span style="font-weight:700">Reoffer</span> is the <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">price</span> field, quoted per 100 for note/bond products (~par); swap-style products carry none.</div>
             <div><span style="font-weight:700">Asset class</span> and <span style="font-weight:700">remaining tenor</span> are derived — asset class from <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">tier1/tier2_product_type</span>, tenor from <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">maturity_date</span> vs report date.</div>
@@ -1352,10 +1332,10 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
           <div style="font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px">Where each visual is fed from</div>
           <div style="display:flex;flex-direction:column;gap:11px;font-size:13px;line-height:1.5;color:var(--text-2)">
             <div><span style="font-weight:600">KPI cards</span> — sums / counts across the current period and filters, compared to the same window one year prior.</div>
-            <div><span style="font-weight:600">Revenue breakdown</span> — the Group-by dimension aggregated by est. bank revenue, ranked, vs. prior year.</div>
-            <div><span style="font-weight:600">Composition &amp; monthly</span> — revenue split by derived asset class, and revenue summed by <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">trade_date</span> month.</div>
+            <div><span style="font-weight:600">GNBV breakdown</span> — the Group-by dimension aggregated by VA / GNBV, ranked, vs. prior year.</div>
+            <div><span style="font-weight:600">Composition &amp; monthly</span> — VA / GNBV split by derived asset class, and VA / GNBV summed by <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-muted);background:var(--surface-muted);padding:1px 5px;border-radius:4px">trade_date</span> month.</div>
             <div><span style="font-weight:600">Asset-class tabs</span> — the same rows scoped to one class, then re-grouped across every field that varies within it.</div>
-            <div><span style="font-weight:600">Desk copilot</span> — reads the current aggregates plus retrieved desk reference notes; it recommends chart specs, but the dashboard computes and draws them from your rows. The free-text box turns a typed request ("revenue by client", "top 5 currencies by volume") into the same kind of chart, computed the same way.</div>
+            <div><span style="font-weight:600">Desk copilot</span> — reads the current aggregates plus retrieved desk reference notes; it recommends chart specs, but the dashboard computes and draws them from your rows. The free-text box turns a typed request ("VA/GNBV by client", "top 5 currencies by volume") into the same kind of chart, computed the same way.</div>
             <div><span style="font-weight:600">Upload history</span> (Golden record tab) — an append-only audit log of every upload, paste, firm sync and clear, kept even across a workspace reset.</div>
           </div>
         </div>
@@ -2089,28 +2069,28 @@ class Component extends DCLogic {
   localInsights(ctx) {
     const usd = n => this.fmtUsd(n);
     const ac = ctx.byAssetClass || [], cl = ctx.byClient || [], ten = ctx.byTenor || [];
-    const totRev = ctx.estBankRevenueUsd || 0;
+    const totRev = ctx.gnbvUsd || 0;
     const share = v => totRev ? v / totRev : 0;
     const bul = [], cards = [], vis = [], filters = [];
-    bul.push(`${this.fmtInt(ctx.tickets)} tickets over ${ctx.period.from} → ${ctx.period.to}; est. bank revenue ${usd(totRev)} on ${usd(ctx.volumeUsd)} volume.`);
+    bul.push(`${this.fmtInt(ctx.tickets)} tickets over ${ctx.period.from} → ${ctx.period.to}; VA / GNBV ${usd(totRev)} on ${usd(ctx.volumeUsd)} volume.`);
     if (ac.length) {
       const t = ac[0], s = share(t.revenue);
-      bul.push(`${t.key} leads revenue at ${usd(t.revenue)} (${(s * 100).toFixed(0)}% of the filtered book).`);
-      cards.push({ title: 'Asset-class mix', tone: s > 0.5 ? 'watch' : 'neutral', body: `${t.key} is ${(s * 100).toFixed(0)}% of revenue. ${s > 0.5 ? 'Concentrated — monitor single-class dependence.' : 'Reasonably spread across classes.'}` });
-      vis.push({ visual_id: 'rev_ac', chart_type: 'bar', metric: 'revenue', group_by: 'assetClass', title: 'Revenue by asset class', top_n: Math.min(8, ac.length) });
+      bul.push(`${t.key} leads VA / GNBV at ${usd(t.revenue)} (${(s * 100).toFixed(0)}% of the filtered book).`);
+      cards.push({ title: 'Asset-class mix', tone: s > 0.5 ? 'watch' : 'neutral', body: `${t.key} is ${(s * 100).toFixed(0)}% of VA / GNBV. ${s > 0.5 ? 'Concentrated — monitor single-class dependence.' : 'Reasonably spread across classes.'}` });
+      vis.push({ visual_id: 'rev_ac', chart_type: 'bar', metric: 'revenue', group_by: 'assetClass', title: 'VA / GNBV by asset class', top_n: Math.min(8, ac.length) });
     }
     if (cl.length) {
       const t = cl[0], s = share(t.revenue);
-      cards.push({ title: 'Client concentration', tone: s > 0.4 ? 'risk' : 'neutral', body: `Top client ${t.key} is ${usd(t.revenue)} (${(s * 100).toFixed(0)}% of revenue). ${s > 0.4 ? 'High single-PB dependence.' : 'Within normal range.'}` });
+      cards.push({ title: 'Client concentration', tone: s > 0.4 ? 'risk' : 'neutral', body: `Top client ${t.key} is ${usd(t.revenue)} (${(s * 100).toFixed(0)}% of VA / GNBV). ${s > 0.4 ? 'High single-PB dependence.' : 'Within normal range.'}` });
       if (s > 0.4 && ac[0]) filters.push({ field: 'assetClass', value: ac[0].key, reason: `Isolate ${t.key}’s dominant asset class` });
-      vis.push({ visual_id: 'rev_cl', chart_type: 'bar', metric: 'revenue', group_by: 'sales_client', title: 'Revenue by client', top_n: Math.min(5, cl.length) });
+      vis.push({ visual_id: 'rev_cl', chart_type: 'bar', metric: 'revenue', group_by: 'sales_client', title: 'VA / GNBV by client', top_n: Math.min(5, cl.length) });
     }
     const near = ten.filter(t => t.key === 'Past due' || t.key === '≤ 2W' || t.key === '≤ 3M').reduce((a, t) => a + t.revenue, 0);
-    if (near > 0) cards.push({ title: 'Tenor / maturity', tone: share(near) > 0.3 ? 'watch' : 'neutral', body: `${usd(near)} of revenue sits in ≤3M / past-due buckets — near-term roll or unwind attention.` });
+    if (near > 0) cards.push({ title: 'Tenor / maturity', tone: share(near) > 0.3 ? 'watch' : 'neutral', body: `${usd(near)} of VA / GNBV sits in ≤3M / past-due buckets — near-term roll or unwind attention.` });
     if (ctx.dataQualityIssues > 0) { cards.push({ title: 'Data quality', tone: 'watch', body: `${ctx.dataQualityIssues} row(s) parked as exceptions (missing date, bad maturity, or negative amount) and excluded from totals.` }); bul.push(`${ctx.dataQualityIssues} data-quality exception(s) held out of period totals.`); }
     return JSON.stringify({
       status: ctx.tickets ? 'ok' : 'insufficient_context',
-      headline: `${(ac[0] && ac[0].key) || 'Desk'} leads · ${this.fmtInt(ctx.tickets)} tickets · ${usd(totRev)} est. revenue`,
+      headline: `${(ac[0] && ac[0].key) || 'Desk'} leads · ${this.fmtInt(ctx.tickets)} tickets · ${usd(totRev)} VA / GNBV`,
       summary: bul.slice(0, 4), floating_cards: cards.slice(0, 4), visual_recommendations: vis.slice(0, 3), filters_to_apply: filters.slice(0, 4)
     });
   }
@@ -2142,6 +2122,18 @@ class Component extends DCLogic {
   };
   onPasteChange = (e) => this.setState({ pasteText: e.target.value });
   onPasteSubmit = () => this.ingest(this.parseDelimited(this.state.pasteText), 'pasted data');
+  // Confirming wrapper for the always-visible header "Clear" button. The
+  // in-panel "Clear all data" button (a deliberate action inside the upload
+  // drawer) calls onClear directly; this prominent chrome button guards against
+  // an accidental click on a populated board. Falls back to clearing directly
+  // if the environment blocks window.confirm.
+  onClearConfirm = () => {
+    const n = this.state.trades.length;
+    let ok = true;
+    try { ok = window.confirm(`Clear all ${n} loaded trade${n === 1 ? '' : 's'} from this workspace? The upload-history audit log is kept.`); } catch (e) {}
+    if (ok) this.onClear();
+  };
+
   onClear = () => {
     const prevTotal = this.state.trades.length;
     this.setState({ trades: [], batches: [], source: 'empty', loadedAt: '–', uploadOpen: false, banner: this.mkBanner('ok', 'Workspace cleared. Upload a blotter or sync the firm feed to begin.') }, () => {
@@ -2345,7 +2337,7 @@ class Component extends DCLogic {
   };
   // Desk knowledge base — retrieved and cited by the copilot (RAG grounding).
   KB = [
-    { id: 'kb-rev', title: 'Revenue methodology', tags: ['revenue', 'pc', 'va', 'gnbv', 'bank'], text: 'Estimated bank revenue = PC + VA/GNBV. PC is primary credit; VA/GNBV captures value-add and gross new business value, including PB fee where flagged. Compare like-for-like against the same window one year prior.' },
+    { id: 'kb-rev', title: 'Value measure', tags: ['revenue', 'pc', 'va', 'gnbv', 'bank'], text: 'The board\'s primary value measure across every breakdown, ranking and chart is VA/GNBV (va_gnbv_usd) — value-add / gross new business value, including PB fee where flagged. It is used instead of an estimated bank revenue because PC (primary credit) is sparsely populated, so PC + VA/GNBV would be a guess. PC and a raw bankRev = PC + VA/GNBV column are still shown on the trade table for reference. Compare like-for-like against the same window one year prior.' },
     { id: 'kb-dup', title: 'Duplicate control', tags: ['duplicate', 'ticket', 'trade'], text: 'Every trade is unique on Trade ID alone. If a Trade ID already exists anywhere in the golden record — from an earlier upload, the firm feed, or elsewhere in the same batch — the later occurrence is treated as a duplicate, skipped, and never counted in the store.' },
     { id: 'kb-tax', title: 'Product taxonomy', tags: ['equities', 'credit', 'rates', 'fx', 'structured', 'asset', 'trs', 'collar', 'repack', 'illiquid'], text: 'Asset class is derived from product tiers: Equity tiers → Equities (TRS, Collar); Structured FI rates → Rates & FI; credit tiers → Credit (flow, illiquid, repack); FX tiers → FX. Structured products dominate the desk mix.' },
     { id: 'kb-tenor', title: 'Tenor & maturity risk', tags: ['tenor', 'maturity', 'past due', 'roll'], text: 'Remaining tenor is bucketed from maturity vs report date: Past due, ≤2W, ≤3M, ≤1Y, ≤3Y, >3Y, Unknown. Concentrations in ≤3M or Past due signal near-term roll/unwind attention.' },
@@ -2372,7 +2364,7 @@ class Component extends DCLogic {
     const qa = this.state.trades.filter(t => !t.trade_date || (t.maturity_date && t.maturity_date < t.trade_date) || t.primary_amount < 0).length;
     return {
       period: { from: f.dateFrom, to: f.dateTo }, activeFilters: { assetClass: f.assetClass, entity: f.entity },
-      tickets: cur.length, estBankRevenueUsd: Math.round(this.sum(cur, t => t.bankRev)), volumeUsd: Math.round(this.sum(cur, t => t.volumeUsd)),
+      tickets: cur.length, gnbvUsd: Math.round(this.sum(cur, t => t.va_gnbv_usd)), volumeUsd: Math.round(this.sum(cur, t => t.volumeUsd)),
       byAssetClass: top(t => t.assetClass, 8), byProductTier2: top(t => t.tier2_product_type || '-', 8),
       byClient: top(t => t.sales_client || '-', 5), byEntity: top(t => t.legal_entity || '-', 5),
       byTenor: top(t => t.tenorBucket, 8), byCurrency: top(t => t.primary_ccy || '-', 6), dataQualityIssues: qa
@@ -2383,7 +2375,7 @@ class Component extends DCLogic {
     const ctx = this.buildAiContext();
     const retrieved = this.retrieve(ctx);
     const notes = retrieved.map(e => `[${e.title}] ${e.text}`).join('\n');
-    const sys = 'You are an analytics copilot embedded in a sales trade blotter dashboard for a wealth-solutions desk. You are given (a) pre-computed aggregates from the current filtered view (all monetary values USD) and (b) retrieved desk reference notes. Ground every judgement in the reference notes and do not contradict them; use the notes to interpret the numbers (methodology, taxonomy, tenor risk, client concentration, data quality). Analyse ONLY the provided aggregates. Return STRICT JSON, no markdown, no prose outside JSON, matching exactly: {"status":"ok"|"insufficient_context","headline":string,"summary":[string],"floating_cards":[{"title":string,"tone":"positive"|"watch"|"risk"|"neutral","body":string}],"visual_recommendations":[{"visual_id":string,"chart_type":"bar","metric":"revenue"|"volume"|"tickets","group_by":"assetClass"|"tier1_product_type"|"tier2_product_type"|"legal_entity"|"primary_ccy"|"sales_client"|"tenorBucket"|"book","title":string,"top_n":number}],"filters_to_apply":[{"field":"assetClass"|"legal_entity","value":string,"reason":string}]}. Max 4 summary bullets, max 4 floating_cards, max 3 visual_recommendations. Be concrete: cite the numbers. Flag concentration, YoY-style shifts you can infer, tenor/maturity risk, and data-quality issues.';
+    const sys = 'You are an analytics copilot embedded in a sales trade blotter dashboard for a wealth-solutions desk. You are given (a) pre-computed aggregates from the current filtered view (all monetary values USD; the monetary "revenue" aggregate is VA/GNBV — the desk\'s primary value field, not an estimated bank revenue) and (b) retrieved desk reference notes. Ground every judgement in the reference notes and do not contradict them; use the notes to interpret the numbers (methodology, taxonomy, tenor risk, client concentration, data quality). Analyse ONLY the provided aggregates. Return STRICT JSON, no markdown, no prose outside JSON, matching exactly: {"status":"ok"|"insufficient_context","headline":string,"summary":[string],"floating_cards":[{"title":string,"tone":"positive"|"watch"|"risk"|"neutral","body":string}],"visual_recommendations":[{"visual_id":string,"chart_type":"bar","metric":"revenue"|"volume"|"tickets","group_by":"assetClass"|"tier1_product_type"|"tier2_product_type"|"legal_entity"|"primary_ccy"|"sales_client"|"tenorBucket"|"book","title":string,"top_n":number}],"filters_to_apply":[{"field":"assetClass"|"legal_entity","value":string,"reason":string}]}. Max 4 summary bullets, max 4 floating_cards, max 3 visual_recommendations. Be concrete: cite the numbers. Flag concentration, YoY-style shifts you can infer, tenor/maturity risk, and data-quality issues.';
     try {
       const txt = await this.llmComplete({ system: sys, max_tokens: 1500, messages: [{ role: 'user', content: 'Retrieved desk reference notes:\n' + notes + '\n\nCurrent blotter view aggregates:\n' + JSON.stringify(ctx) + '\n\nGenerate immediate dashboard insights and visual recommendations grounded in the notes. Return JSON only.' }] }, ctx);
       const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
@@ -2409,7 +2401,7 @@ class Component extends DCLogic {
     const mx = Math.max(1, ...agg.map(pick));
     return {
       id: 'cv' + Date.now() + Math.floor(Math.random() * 1000), title: title || `${def.label} breakdown`,
-      metricLabel: metric === 'tickets' ? 'tickets' : metric === 'volume' ? 'volume' : 'revenue', caption: caption || '',
+      metricLabel: metric === 'tickets' ? 'tickets' : metric === 'volume' ? 'volume' : 'VA / GNBV', caption: caption || '',
       rows: agg.map(g => ({ key: g.key, valText: metric === 'tickets' ? this.fmtInt(g.tickets) : this.fmtUsd(pick(g)), pctW: Math.max(2, pick(g) / mx * 100).toFixed(1) }))
     };
   }
@@ -2433,7 +2425,7 @@ class Component extends DCLogic {
     else if (/\basset|\bclass\b/.test(q)) key = 'assetClass';
     else { key = 'assetClass'; assumed = true; }
     const def = byKey[key] || byKey.assetClass;
-    const title = `${metric === 'tickets' ? 'Tickets' : metric === 'volume' ? 'Volume' : 'Revenue'} by ${def.label}`;
+    const title = `${metric === 'tickets' ? 'Tickets' : metric === 'volume' ? 'Volume' : 'VA / GNBV'} by ${def.label}`;
     const caption = assumed ? `Couldn't identify a grouping in "${query}" — defaulting to asset class. Mention client, currency, entity, product, tenor, book or TREATs to target a different breakdown.` : `Generated locally (no LLM reachable) from your current filtered view.`;
     return this.computeCustomVisual(cur, def, metric, topN, title, caption);
   }
@@ -2448,7 +2440,7 @@ class Component extends DCLogic {
     }
     const defs = this.groupByDefs(); const byKey = {}; defs.forEach(d => byKey[d.key] = d);
     const ctx = this.buildAiContext();
-    const sys = 'You are a charting assistant embedded in a sales trade blotter dashboard. Given a user\'s free-text request and pre-computed aggregates from the current filtered view (all monetary values USD), decide the SINGLE best chart to draw. Return STRICT JSON, no markdown, no prose outside JSON, matching exactly: {"title":string,"metric":"revenue"|"volume"|"tickets","group_by":"assetClass"|"tier1_product_type"|"tier2_product_type"|"legal_entity"|"primary_ccy"|"sales_client"|"tenorBucket"|"treats_acronym"|"book","top_n":number,"caption":string}. "caption" is one sentence directly answering the user\'s request using the numbers you were given. top_n between 3 and 12. Pick group_by strictly from the enum given, choosing whichever dimension best matches the user\'s wording.';
+    const sys = 'You are a charting assistant embedded in a sales trade blotter dashboard. Given a user\'s free-text request and pre-computed aggregates from the current filtered view (all monetary values USD; the monetary "revenue" aggregate is VA/GNBV — the desk\'s primary value field, not an estimated bank revenue), decide the SINGLE best chart to draw. Return STRICT JSON, no markdown, no prose outside JSON, matching exactly: {"title":string,"metric":"revenue"|"volume"|"tickets","group_by":"assetClass"|"tier1_product_type"|"tier2_product_type"|"legal_entity"|"primary_ccy"|"sales_client"|"tenorBucket"|"treats_acronym"|"book","top_n":number,"caption":string}. "caption" is one sentence directly answering the user\'s request using the numbers you were given. top_n between 3 and 12. Pick group_by strictly from the enum given, choosing whichever dimension best matches the user\'s wording.';
     try {
       // Deliberately omit the ctx argument here (unlike runAi) — see llmComplete:
       // without it, an unreachable LLM throws instead of returning the OTHER
@@ -2537,7 +2529,11 @@ class Component extends DCLogic {
   sum(arr, fn) { return arr.reduce((a, t) => a + fn(t), 0); }
   aggBy(arr, keyFn) {
     const m = new Map();
-    arr.forEach(t => { const k = keyFn(t); if (!m.has(k)) m.set(k, { key: k, rev: 0, vol: 0, tickets: 0 }); const g = m.get(k); g.rev += t.bankRev; g.vol += t.volumeUsd; g.tickets++; });
+    // The `rev` accumulator is the board's primary value measure. It is summed
+    // from va_gnbv_usd (VA / GNBV — a real, populated field), NOT the estimated
+    // bank revenue (PC + VA/GNBV): PC is sparsely populated, so ranking/plots
+    // key off GNBV to avoid presenting a guessed number.
+    arr.forEach(t => { const k = keyFn(t); if (!m.has(k)) m.set(k, { key: k, rev: 0, vol: 0, tickets: 0 }); const g = m.get(k); g.rev += t.va_gnbv_usd; g.vol += t.volumeUsd; g.tickets++; });
     return [...m.values()];
   }
 
@@ -2570,10 +2566,11 @@ class Component extends DCLogic {
       const byCol = y => y === 'All' ? ct : ct.filter(t => t.year === y);
       const notional = cols.map(y => this.sum(byCol(y), t => t.volumeUsd));
       const gnbv = cols.map(y => this.sum(byCol(y), t => t.va_gnbv_usd));
-      const rev = cols.map(y => this.sum(byCol(y), t => t.bankRev));
+      // Growth is measured on GNBV (a real field), not the estimated bank
+      // revenue — the desk asked not to lean on the PC-inclusive guess.
       const growth = cols.map((y, i) => {
         if (y === 'All' || i === 0) return { text: '–', color: 'var(--text-faint)' };
-        const prev = rev[i - 1], curr = rev[i];
+        const prev = gnbv[i - 1], curr = gnbv[i];
         const d = prev ? (curr - prev) / Math.abs(prev) : null;
         return { text: this.fmtPct(d), color: this.pctColor(d) };
       });
@@ -2584,8 +2581,7 @@ class Component extends DCLogic {
         rows: [
           moneyRow('Total Notional', notional),
           moneyRow('Total GNBV', gnbv),
-          moneyRow('Total Bank Revenue', rev),
-          { label: 'Bank Revenue Growth', cells: growth }
+          { label: 'GNBV Growth', cells: growth }
         ]
       };
     }
@@ -2598,19 +2594,19 @@ class Component extends DCLogic {
       const priorTrades = ct.filter(t => t.year === priorYear);
       const mkRow = (label, pred, strong) => {
         const c = curTrades.filter(pred), p = priorTrades.filter(pred);
-        const cNot = this.sum(c, t => t.volumeUsd), cRev = this.sum(c, t => t.bankRev);
-        const pNot = this.sum(p, t => t.volumeUsd), pRev = this.sum(p, t => t.bankRev);
+        const cNot = this.sum(c, t => t.volumeUsd), cGnbv = this.sum(c, t => t.va_gnbv_usd);
+        const pNot = this.sum(p, t => t.volumeUsd), pGnbv = this.sum(p, t => t.va_gnbv_usd);
         const dNot = pNot ? (cNot - pNot) / Math.abs(pNot) : null;
-        const dRev = pRev ? (cRev - pRev) / Math.abs(pRev) : null;
+        const dGnbv = pGnbv ? (cGnbv - pGnbv) / Math.abs(pGnbv) : null;
         return {
           label, strong: !!strong, weight: strong ? '700' : '600',
           cells: [
             { text: this.fmtUsd(cNot), color: 'var(--text)' },
-            { text: this.fmtUsd(cRev), color: 'var(--text)' },
+            { text: this.fmtUsd(cGnbv), color: 'var(--text)' },
             { text: this.fmtUsd(pNot), color: 'var(--text)' },
-            { text: this.fmtUsd(pRev), color: 'var(--text)' },
+            { text: this.fmtUsd(pGnbv), color: 'var(--text)' },
             { text: this.fmtPct(dNot), color: this.pctColor(dNot) },
-            { text: this.fmtPct(dRev), color: this.pctColor(dRev) }
+            { text: this.fmtPct(dGnbv), color: this.pctColor(dGnbv) }
           ]
         };
       };
@@ -2618,9 +2614,9 @@ class Component extends DCLogic {
         show: true,
         headerCells: [
           { text: '' },
-          { text: `${curYear} Notional` }, { text: `${curYear} Revenue` },
-          { text: `${priorYear} Notional` }, { text: `${priorYear} Revenue` },
-          { text: 'Notional Δ' }, { text: 'Revenue Δ' }
+          { text: `${curYear} Notional` }, { text: `${curYear} GNBV` },
+          { text: `${priorYear} Notional` }, { text: `${priorYear} GNBV` },
+          { text: 'Notional Δ' }, { text: 'GNBV Δ' }
         ],
         rows: [
           mkRow('HK GPB', t => isPb(t)),
@@ -2700,10 +2696,10 @@ class Component extends DCLogic {
         const mx = Math.max(1, ...agg.map(g => g.rev));
         return { title: d.label, count: agg.length + ' groups', rows: agg.slice(0, 6).map(g => ({ key: g.key, valText: this.fmtUsd(g.rev), sub: g.tickets + ' tix', pctW: Math.max(2, g.rev / mx * 100).toFixed(1) })) };
       }).filter(Boolean);
-      const rev = this.sum(cur, t => t.bankRev), vol = this.sum(cur, t => t.volumeUsd);
+      const gnbv = this.sum(cur, t => t.va_gnbv_usd), vol = this.sum(cur, t => t.volumeUsd);
       const priced = cur.filter(t => t.price > 0);
       const avgPx = priced.length ? (this.sum(priced, t => t.price) / priced.length).toFixed(2) : null;
-      detailMeta = `${cur.length} tickets \u00b7 ${this.fmtUsd(rev)} est. revenue \u00b7 ${this.fmtUsd(vol)} volume \u00b7 ${detailPanels.length} breakdown dimensions` + (avgPx ? ` \u00b7 avg reoffer ${avgPx}` : '');
+      detailMeta = `${cur.length} tickets \u00b7 ${this.fmtUsd(gnbv)} VA/GNBV \u00b7 ${this.fmtUsd(vol)} volume \u00b7 ${detailPanels.length} breakdown dimensions` + (avgPx ? ` \u00b7 avg reoffer ${avgPx}` : '');
     }
 
     // KPIs
@@ -2716,8 +2712,7 @@ class Component extends DCLogic {
     const kpi = (label, val, d, sub, tip) => ({ label, value: val, delta: this.fmtPct(d), deltaColor: this.pctColor(d), sub, tip });
     const kpis = [
       kpi('Total volume', this.fmtUsd(kv.vol), dl(kv.vol, pv.vol), 'YoY', 'Volume uses tv_usd, falling back to primary_amount where trade value is absent.'),
-      kpi('PC', this.fmtUsd(kv.pc), dl(kv.pc, pv.pc), 'YoY', 'PC (primary credit) is summed from pc_usd on each ticket — one of the two components of est. bank revenue (PC + VA/GNBV).'),
-      kpi('VA / GNBV', this.fmtUsd(kv.va), dl(kv.va, pv.va), 'YoY', 'VA/GNBV captures value-add and gross new business value, summed from va_gnbv_usd on each ticket — the other component of est. bank revenue (PC + VA/GNBV).'),
+      kpi('VA / GNBV', this.fmtUsd(kv.va), dl(kv.va, pv.va), 'YoY', 'VA/GNBV — value-add / gross new business value, summed from va_gnbv_usd on each ticket. This is the board\'s primary value measure; every breakdown and ranking is built from it.'),
       kpi('Avg reoffer', kv.px != null ? kv.px.toFixed(2) : '–', (kv.px != null && pv.px) ? dl(kv.px, pv.px) : null, 'YoY · priced tickets', 'Reoffer is the price field, quoted per 100 for note/bond products (~par); swap-style products carry none. Averaged across priced tickets only.'),
       kpi('Tickets', this.fmtInt(kv.tix), dl(kv.tix, pv.tix), 'YoY', 'Tickets is the count of trades in the current period and filters.'),
       { label: 'Upload batches', value: this.fmtInt(this.state.batches.length), delta: this.fmtInt(trades.length), deltaColor: 'var(--text-faint)', sub: 'trades stored', tip: 'Upload batches is the number of import batches (upload, paste, or firm sync) making up the current dataset; the figure alongside is total trades stored.' }
@@ -2749,7 +2744,7 @@ class Component extends DCLogic {
     // monthly
     const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const mMap = new Map();
-    cur.forEach(t => { if (t.monthN) mMap.set(t.monthN, (mMap.get(t.monthN) || 0) + t.bankRev); });
+    cur.forEach(t => { if (t.monthN) mMap.set(t.monthN, (mMap.get(t.monthN) || 0) + t.va_gnbv_usd); });
     const mKeys = [...mMap.keys()].sort((a, b) => a - b);
     const mMax = Math.max(1, ...mKeys.map(k => mMap.get(k)));
     const months = mKeys.map(k => ({ label: MN[k - 1], hW: Math.max(2, mMap.get(k) / mMax * 100).toFixed(1), revText: this.fmtM(mMap.get(k)) }));
@@ -2767,10 +2762,10 @@ class Component extends DCLogic {
       return { title, rows: top.map(g => ({ key: g.key, valText: metric === 'vol' ? this.fmtUsd(g.vol) : this.fmtUsd(g.rev), pctW: Math.max(2, (metric === 'vol' ? g.vol : g.rev) / mx * 100).toFixed(1) })) };
     };
     const miniPanels = [
-      mini('Revenue by coverage', t => t.salesperson_coverage || '\u2013', 'rev'),
+      mini('VA / GNBV by coverage', t => t.salesperson_coverage || '\u2013', 'rev'),
       mini('Volume by currency', t => t.primary_ccy || '\u2013', 'vol'),
-      mini('Revenue by remaining tenor', t => t.tenorBucket, 'rev'),
-      mini('Revenue by client', t => t.sales_client || '\u2013', 'rev')
+      mini('VA / GNBV by remaining tenor', t => t.tenorBucket, 'rev'),
+      mini('VA / GNBV by client', t => t.sales_client || '\u2013', 'rev')
     ].filter(Boolean);
 
     // cumulative revenue build (YTD) \u2014 rising cumulative column chart (div-based)
@@ -2802,7 +2797,7 @@ class Component extends DCLogic {
     }
 
     // ---- directional flow: Buy vs Sell (compulsory side field) ----
-    const sideRows = ['Buy', 'Sell'].map(s => { const g = cur.filter(t => t.buy_sell === s); return { key: s, tickets: g.length, rev: this.sum(g, t => t.bankRev), vol: this.sum(g, t => t.volumeUsd) }; });
+    const sideRows = ['Buy', 'Sell'].map(s => { const g = cur.filter(t => t.buy_sell === s); return { key: s, tickets: g.length, rev: this.sum(g, t => t.va_gnbv_usd), vol: this.sum(g, t => t.volumeUsd) }; });
     const hasFlow = (sideRows[0].tickets + sideRows[1].tickets) > 0;
     let flow = { rows: [], totText: '', barBuyW: '0', barSellW: '0', buyText: '', sellText: '', buyPct: '', sellPct: '' };
     if (hasFlow) {
@@ -3012,15 +3007,6 @@ class Component extends DCLogic {
       });
     }
 
-    // ---- PC vs VA/GNBV split by asset class (compulsory economic fields) ----
-    const splitMap = new Map();
-    cur.forEach(t => { const k = t.assetClass; if (!splitMap.has(k)) splitMap.set(k, { key: k, pc: 0, va: 0 }); const g = splitMap.get(k); g.pc += t.pc_usd; g.va += t.va_gnbv_usd; });
-    const splitArr = [...splitMap.values()].map(g => ({ key: g.key, pc: g.pc, va: g.va, tot: g.pc + g.va })).sort((a, b) => b.tot - a.tot);
-    const splitMax = Math.max(1, ...splitArr.map(g => g.tot));
-    const pcva = splitArr.map(g => ({ key: g.key, totText: this.fmtUsd(g.tot), pcW: (g.pc / splitMax * 100).toFixed(1), vaW: (g.va / splitMax * 100).toFixed(1), pcText: this.fmtUsd(g.pc), vaText: this.fmtUsd(g.va) }));
-    const totPc = this.sum(cur, t => t.pc_usd), totVa = this.sum(cur, t => t.va_gnbv_usd), totBoth = Math.max(1, totPc + totVa);
-    const pcvaLegend = { pcText: this.fmtUsd(totPc), vaText: this.fmtUsd(totVa), pcPct: (totPc / totBoth * 100).toFixed(0) + '%', vaPct: (totVa / totBoth * 100).toFixed(0) + '%' };
-
     // ---- legal entity x asset class revenue matrix (compulsory identity field
     // x the resolved asset-class dimension). Uses assetClassOf's resolved
     // class rather than raw Tier 1 \u2014 Tier 1 is "Markets" for every row from
@@ -3028,7 +3014,7 @@ class Component extends DCLogic {
     const mCols = [...new Set(cur.map(t => t.assetClass).filter(Boolean))].sort();
     const mEnts = [...new Set(cur.map(t => t.legal_entity).filter(Boolean))].sort();
     const cellMap = {}; let cellMax = 1;
-    cur.forEach(t => { const k = t.legal_entity + '|' + t.assetClass; cellMap[k] = (cellMap[k] || 0) + t.bankRev; if (cellMap[k] > cellMax) cellMax = cellMap[k]; });
+    cur.forEach(t => { const k = t.legal_entity + '|' + t.assetClass; cellMap[k] = (cellMap[k] || 0) + t.va_gnbv_usd; if (cellMap[k] > cellMax) cellMax = cellMap[k]; });
     const matrixCols = mCols;
     const matrixRows = mEnts.map(e => {
       const cells = mCols.map(c => { const v = cellMap[e + '|' + c] || 0; const a = v ? Math.min(0.88, 0.12 + v / cellMax * 0.76) : 0; return { text: v ? this.fmtUsd(v) : '\u2013', bg: `rgba(215,20,26,${a.toFixed(3)})`, color: a > 0.5 ? 'var(--on-brand)' : (v ? 'var(--text-3)' : 'var(--text-disabled)') }; });
@@ -3056,7 +3042,7 @@ class Component extends DCLogic {
         const pick = g => metric === 'volume' ? g.vol : metric === 'tickets' ? g.tickets : g.rev;
         const agg = this.aggBy(cur, def.fn).sort((a, b) => pick(b) - pick(a)).slice(0, Math.max(1, Math.min(10, v.top_n || 6)));
         const mx = Math.max(1, ...agg.map(pick));
-        return { title: v.title || def.label, metricLabel: metric === 'tickets' ? 'tickets' : metric === 'volume' ? 'volume' : 'revenue', rows: agg.map(g => ({ key: g.key, valText: metric === 'tickets' ? this.fmtInt(g.tickets) : this.fmtUsd(pick(g)), pctW: Math.max(2, pick(g) / mx * 100).toFixed(1) })) };
+        return { title: v.title || def.label, metricLabel: metric === 'tickets' ? 'tickets' : metric === 'volume' ? 'volume' : 'VA / GNBV', rows: agg.map(g => ({ key: g.key, valText: metric === 'tickets' ? this.fmtInt(g.tickets) : this.fmtUsd(pick(g)), pctW: Math.max(2, pick(g) / mx * 100).toFixed(1) })) };
       });
       aiFilters = (resp.filters_to_apply || []).slice(0, 4).map(af => ({ label: `${af.field === 'legal_entity' ? 'Entity' : 'Asset class'}: ${af.value}`, onClick: () => this.applyAiFilter(af.field, af.value) }));
     }
@@ -3116,8 +3102,8 @@ class Component extends DCLogic {
       activeFilterCount, activeFiltersText, resetLabel, resetBg, resetFg, resetBorder,
       goldenColumns, goldenRows, goldenShown, goldenTotal: trades.length, goldenBatches: this.state.batches.length, goldenLoaded: this.state.loadedAt, dedupRule: 'Trade ID (exact match, case/whitespace-insensitive)',
       historyRows, historyTotal, historyCount: historyRows.length, historyEmpty: historyRows.length === 0,
-      pcva, pcvaLegend, matrixCols, matrixRows, hasEntityMatrix, noEntityMatrixData,
-      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onExportGoldenCsv: this.onExportGoldenCsv, onBannerDismiss: this.onBannerDismiss,
+      matrixCols, matrixRows, hasEntityMatrix, noEntityMatrixData,
+      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onClearConfirm: this.onClearConfirm, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onExportGoldenCsv: this.onExportGoldenCsv, onBannerDismiss: this.onBannerDismiss,
       onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset, onResetView: this.onResetView
     };
   }

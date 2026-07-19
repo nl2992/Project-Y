@@ -155,8 +155,8 @@
     <div class="feat"><span class="ico">📥</span><h4>Ingest anything flat</h4><p>Upload <code>.xlsx</code>/<code>.xls</code>/<code>.csv</code> or paste delimited text. Headers auto-map; extra columns are preserved, not dropped.</p></div>
     <div class="feat"><span class="ico">🗂️</span><h4>Golden record</h4><p>One de-duplicated store of every trade. Export it back out in the exact 44-column standardiser format — it round-trips straight back in.</p></div>
     <div class="feat"><span class="ico">🎛️</span><h4>Filters &amp; presets</h4><p>Date range (Weekly / Monthly / YTD presets that track today), asset class, legal entity, coverage, and free-text search.</p></div>
-    <div class="feat"><span class="ico">📊</span><h4>Headline KPIs</h4><p>Total volume, PC, VA/GNBV, average reoffer, tickets and upload batches — each with a year-on-year delta.</p></div>
-    <div class="feat"><span class="ico">🧭</span><h4>Overview analytics</h4><p>Revenue breakdown by any dimension, composition by asset class, monthly trend, PC-vs-GNBV split, legal-entity × asset-class matrix, and Tier-1 × Tier-2 product mix.</p></div>
+    <div class="feat"><span class="ico">📊</span><h4>Headline KPIs</h4><p>Total volume, VA/GNBV, average reoffer, tickets and upload batches — each with a year-on-year delta.</p></div>
+    <div class="feat"><span class="ico">🧭</span><h4>Overview analytics</h4><p>VA/GNBV breakdown by any dimension, composition by asset class, monthly trend, PC-vs-GNBV economics split, legal-entity × asset-class matrix, and Tier-1 × Tier-2 product mix.</p></div>
     <div class="feat"><span class="ico">📑</span><h4>Per-desk summary tables</h4><p>Each asset-class tab reproduces the desk's Excel summary sheets: a <strong>yearly summary</strong> and a <strong>client-segment year-on-year</strong> (HK GPB vs HK External).</p></div>
     <div class="feat"><span class="ico">🔍</span><h4>Data quality &amp; exceptions</h4><p>Flags missing trade dates, maturities before trade date, and negative notionals — so you catch bad rows before they skew a number.</p></div>
     <div class="feat"><span class="ico">🌓</span><h4>Comfortable to read</h4><p>Light &amp; dark themes, comfortable/compact density, and a clean print layout that never clips rows.</p></div>
@@ -166,7 +166,7 @@
   <table>
     <thead><tr><th>Figure</th><th>Definition</th></tr></thead>
     <tbody>
-      <tr><td>Estimated bank revenue</td><td><span class="mono">PC + VA/GNBV</span> per ticket</td></tr>
+      <tr><td>Primary value measure</td><td><span class="mono">VA/GNBV</span> (<span class="mono">va_gnbv_usd</span>) — value-add / gross new business value. Every breakdown, ranking and chart rolls up from this. A PC-inclusive bank revenue is <em>not</em> used for plots (PC is sparse, so the sum would be a guess); PC and a raw bank-rev column stay on the trade table for reference.</td></tr>
       <tr><td>Volume</td><td><span class="mono">$ TV</span>, falling back to <span class="mono">Primary Amount</span> where trade value is absent</td></tr>
       <tr><td>Asset class</td><td>Derived from Tier&nbsp;1 / Tier&nbsp;2 product type (Equities, FX, Credit, Rates &amp; FI…)</td></tr>
       <tr><td>Remaining tenor</td><td>Bucketed from maturity date: Past due, ≤2W, ≤3M, ≤1Y, ≤3Y, &gt;3Y, Unknown</td></tr>
@@ -181,28 +181,28 @@
   <p class="sub">A desk analyst that reads only what's on screen and cites the numbers.</p>
 
   <p>The copilot lives on the <strong>Overview</strong> tab and works on your <strong>current filtered view</strong> — it analyses the
-    pre-computed aggregates of exactly the rows you're looking at, grounded in the desk's own reference notes (revenue methodology,
+    pre-computed aggregates of exactly the rows you're looking at, grounded in the desk's own reference notes (value-measure methodology,
     product taxonomy, tenor risk, client concentration, data quality). It never invents data. There are two ways to use it:</p>
 
   <div class="grid">
     <div class="feat"><span class="ico">💡</span><h4>Generate insights</h4><p>One click. Returns a headline read, a few summary bullets, tone-coded cards (positive / watch / risk / neutral), suggested visuals, and clickable drill-down filters.</p></div>
-    <div class="feat"><span class="ico">📈</span><h4>Generate visual</h4><p>Describe a chart in plain English and it's built from your current rows — e.g. <em>“revenue by client”</em>, <em>“top 5 currencies by volume”</em>, <em>“tickets by tenor”</em>.</p></div>
+    <div class="feat"><span class="ico">📈</span><h4>Generate visual</h4><p>Describe a chart in plain English and it's built from your current rows — e.g. <em>“VA/GNBV by client”</em>, <em>“top 5 currencies by volume”</em>, <em>“tickets by tenor”</em>.</p></div>
   </div>
 
   <h3>Sample usage — “Generate insights”</h3>
   <p class="sub">You've filtered to <span class="mono">Equities · YTD</span> and clicked <strong>Generate insights</strong>. A typical response:</p>
   <div class="chat">
-    <div class="bubble u"><div class="who">You · current view</div>Equities · 2026 YTD · 4 tickets · $27.0m volume · $260k est. revenue</div>
+    <div class="bubble u"><div class="who">You · current view</div>Equities · 2026 YTD · 4 tickets · $27.0m volume · $140k VA/GNBV</div>
     <div class="bubble a">
       <div class="who">Desk copilot</div>
-      Equities revenue is up +125% YoY on the back of two large HK GPB collars, but the book is highly concentrated.
+      Equities VA/GNBV is up +125% YoY on the back of two large HK GPB collars, but the book is highly concentrated.
       <ul class="clean">
-        <li>HK GPB is 58% of segment revenue ($110k of $180k); a single client drives most of it.</li>
-        <li>Bank revenue growth (+125%) far outpaces notional growth — margin per ticket is widening.</li>
-        <li>External flow is thin this year ($9.0m notional, $70k revenue) versus last.</li>
+        <li>HK GPB is 71% of segment VA/GNBV ($100k of $140k); a single client drives most of it.</li>
+        <li>VA/GNBV growth (+125%) far outpaces notional growth — value per ticket is widening.</li>
+        <li>External flow is thin this year ($9.0m notional, $40k VA/GNBV) versus last.</li>
       </ul>
       <div class="aicards">
-        <div class="aic pos"><div class="t"><span class="dot"></span>Momentum</div>Revenue +125% YoY, led by structured collars.</div>
+        <div class="aic pos"><div class="t"><span class="dot"></span>Momentum</div>VA/GNBV +125% YoY, led by structured collars.</div>
         <div class="aic wat"><div class="t"><span class="dot"></span>Watch</div>Client concentration in HK GPB — single-name dependence.</div>
         <div class="aic rsk"><div class="t"><span class="dot"></span>Risk</div>Thin external pipeline; growth rests on two deals.</div>
       </div>
@@ -216,10 +216,10 @@
 
   <h3>Sample usage — “Generate visual”</h3>
   <p class="sub">Type a request into the visual box; the copilot picks the metric, grouping and top-N and renders a chart from your filtered rows.</p>
-  <pre><span class="k">›</span> top 5 clients by revenue
+  <pre><span class="k">›</span> top 5 clients by VA/GNBV
 <span class="k">›</span> volume by currency
 <span class="k">›</span> tickets by remaining tenor
-<span class="k">›</span> revenue by legal entity</pre>
+<span class="k">›</span> VA/GNBV by legal entity</pre>
   <div class="callout">
     <strong>Offline behaviour.</strong> The copilot calls the firm's language-model endpoint. With no backend reachable
     (e.g. opened from <code>file://</code>), it fails gracefully — you'll see a short “unable to reach the copilot” note and the
