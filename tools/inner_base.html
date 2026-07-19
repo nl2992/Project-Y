@@ -1205,9 +1205,12 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
           </div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px var(--shadow-xs)">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line-soft)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line-soft);gap:12px;flex-wrap:wrap">
             <div style="font-size:13.5px;font-weight:700">Master trade store</div>
-            <div style="font-size:12px;color:var(--text-faintest)">Showing {{ goldenShown }} of {{ goldenTotal }} stored trades</div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="font-size:12px;color:var(--text-faintest)">Showing {{ goldenShown }} of {{ goldenTotal }} stored trades</div>
+              <button class="no-print" sc-camel-on-click="{{ onExportGoldenCsv }}" title="Export every unique stored trade (no filters, no row cap) in the standard 44-column golden record template format" style="background:var(--surface-muted);color:var(--text-muted);border:1px solid var(--line-quiet);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Export golden record</button>
+            </div>
           </div>
           <div style="overflow-x:auto;max-height:640px;overflow-y:auto">
             <sc-raw-table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -2149,6 +2152,95 @@ class Component extends DCLogic {
     }
   };
 
+  // Export the full de-duplicated golden record (this.state.trades — no
+  // filters, no 150-row display cap) in the exact 44-column standardiser
+  // template format the board ingests, so the file round-trips straight
+  // back in through the paste/upload path. Does not touch any calculation,
+  // aggregation, parsing or dedup logic — pure read + format of stored rows.
+  onExportGoldenCsv = () => {
+    try {
+      const trades = this.state.trades || [];
+      // Numbers are written bare (unquoted) so Excel types them numerically;
+      // everything else is quoted text — same convention as onExportCsv.
+      const esc = (v) => {
+        if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '';
+        const s = (v === null || v === undefined) ? '' : String(v);
+        return '"' + s.replace(/"/g, '""') + '"';
+      };
+      // Pass-through fields (Flow Value / Liquidity Reserve / CVA / FVA) are
+      // stored as raw strings, not numified by deriveTrade — parse them for
+      // export only; a blank/absent value stays blank, never 0/NaN.
+      const numVal = (v) => {
+        if (v === null || v === undefined || v === '') return '';
+        const n = this.num(v);
+        return Number.isFinite(n) ? n : '';
+      };
+      const cols = [
+        ['*Salesperson (Coverage)', t => t.salesperson_coverage],
+        ['*Tier 1 Product Type', t => t.tier1_product_type],
+        ['*Tier 2 Product Type', t => t.tier2_product_type],
+        ['*Tier 3 Product Type', t => t.tier3_product_type],
+        ['*Trade Date', t => t.date],
+        ['*Primary CCY', t => t.primary_ccy],
+        ['*Legal Entity', t => t.legal_entity],
+        ['Site Code', t => t.site_code],
+        ['*Treats Acronym', t => t.treats_acronym],
+        ['*$ Volume', t => numVal(t.volumeUsd)],
+        ['*$ PC', t => numVal(t.pc_usd)],
+        ['*$ VA/GNBV', t => numVal(t.va_gnbv_usd)],
+        ['Sales Team (Coverage)', t => t.sales_team_coverage],
+        ['Sales Person Country', t => t.sales_person_country],
+        ['*Trade ID', t => t.id],
+        ['*Revenue CCY', t => t.revenue_ccy],
+        ['Secondary CCY', t => t.secondary_ccy],
+        ['ISIN Code', t => t.isin_code],
+        ['Maturity Date', t => this.normDate(t.maturity_date)],
+        ['Sales Client', t => t.sales_client],
+        ['Sales Client Sector', t => t.sales_client_sector],
+        ['Sales Client Country', t => t.sales_client_country],
+        ['Sales Client Type', t => t.sales_client_type],
+        ['Book', t => t.book],
+        ['Trader', t => t.trader],
+        ['Platform', t => t.platform],
+        ['FX Platform Description', t => t.fx_platform_description],
+        ['PC CODE', t => t.pc_code],
+        ['CCY PC', t => t.ccy_pc],
+        // Board's standardiser default copies $ Volume straight to $ TV —
+        // both columns emit the same stored volume value, per spec.
+        ['$ TV', t => numVal(t.volumeUsd)],
+        ['Commission Code', t => t.commission_code],
+        ['Security', t => t.security],
+        ['Issuer', t => t.issuer],
+        ['Ticker', t => t.ticker],
+        ['Buy/Sell', t => t.buy_sell],
+        ['Price', t => numVal(t.price)],
+        ['BTB Trade Site', t => t.btb_trade_site],
+        ['Flow Value', t => numVal(t.flow_value)],
+        ['Liquidity Reserve', t => numVal(t.liquidity_reserve)],
+        ['CVA', t => numVal(t.cva)],
+        ['FVA', t => numVal(t.fva)],
+        ['Risk Book', t => t.risk_book],
+        ['TFX Flag', t => t.tfx_flag],
+        ['Comment', t => t.comment]
+      ];
+      const lines = [cols.map(c => esc(c[0])).join(',')];
+      trades.forEach(t => { lines.push(cols.map(c => esc(c[1](t))).join(',')); });
+      const csv = lines.join('\r\n') + '\r\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dstr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `wsg_blotter_golden_record_${dstr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      this.setState({ banner: this.mkBanner('warn', 'Could not export golden record CSV. ' + (e && e.message ? e.message : '')) }, () => this.armBannerTimer());
+    }
+  };
+
   onReset = () => this.setF({ assetClass: 'All asset classes', entity: 'All entities', coverage: 'All coverage', search: '' });
 
   // Trade-blotter column chooser: layers on top of the auto-adapted `present`
@@ -2839,7 +2931,7 @@ class Component extends DCLogic {
       goldenColumns, goldenRows, goldenShown, goldenTotal: trades.length, goldenBatches: this.state.batches.length, goldenLoaded: this.state.loadedAt, dedupRule: 'Trade ID (exact match, case/whitespace-insensitive)',
       historyRows, historyTotal, historyCount: historyRows.length, historyEmpty: historyRows.length === 0,
       pcva, pcvaLegend, matrixCols, matrixRows, hasEntityMatrix, noEntityMatrixData,
-      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onBannerDismiss: this.onBannerDismiss,
+      onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onExportGoldenCsv: this.onExportGoldenCsv, onBannerDismiss: this.onBannerDismiss,
       onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset
     };
   }
