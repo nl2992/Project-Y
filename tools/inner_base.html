@@ -617,7 +617,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
         <div style="width:48px;height:48px;border-radius:12px;background:var(--surface-muted);color:var(--text-faint);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:21px;font-weight:700">⌕</div>
         <div style="font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--text)">No trades match the current filters</div>
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.6;max-width:560px;margin:9px auto 22px">Active filters: {{ activeFiltersText }}</div>
-        <button class="no-print" sc-camel-on-click="{{ onReset }}" style="background:var(--brand);color:var(--on-brand);border:none;padding:10px 22px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Reset filters</button>
+        <button class="no-print" sc-camel-on-click="{{ onResetView }}" style="background:var(--brand);color:var(--on-brand);border:none;padding:10px 22px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Reset filters &amp; show all dates</button>
       </div>
     </sc-if>
 
@@ -824,7 +824,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
 
         <sc-if value="{{ yearSummary.show }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px var(--shadow-xs);margin-top:16px">
-            <div style="font-size:13px;font-weight:700;letter-spacing:.2px;margin-bottom:12px">Yearly summary</div>
+            <div style="margin-bottom:12px"><div style="font-size:13px;font-weight:700;letter-spacing:.2px">Yearly summary</div><div style="font-size:10.5px;color:var(--text-faintest);margin-top:2px">Every loaded trade in this asset class, grouped by year — independent of the date filter above</div></div>
             <div style="overflow-x:auto">
               <sc-raw-table style="width:100%;border-collapse:collapse;font-size:11.5px">
                 <sc-raw-thead>
@@ -851,7 +851,7 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
 
         <sc-if value="{{ segSummary.show }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px var(--shadow-xs);margin-top:16px">
-            <div style="font-size:13px;font-weight:700;letter-spacing:.2px;margin-bottom:12px">Client segment · year-on-year</div>
+            <div style="margin-bottom:12px"><div style="font-size:13px;font-weight:700;letter-spacing:.2px">Client segment · year-on-year</div><div style="font-size:10.5px;color:var(--text-faintest);margin-top:2px">Most recent year vs prior year across all loaded trades — independent of the date filter above</div></div>
             <div style="overflow-x:auto">
               <sc-raw-table style="width:100%;border-collapse:collapse;font-size:11.5px">
                 <sc-raw-thead>
@@ -1490,6 +1490,25 @@ class Component extends DCLogic {
     timeoutMs: 12000
   };
 
+  // Today's date (ISO) for the default filter upper bound. Kept deliberately
+  // separate from REPORT (the tenor-bucketing anchor) — REPORT is a fixed
+  // report date, whereas the date FILTER must track the calendar or it hides
+  // freshly booked trades dated after that fixed date. Falls back to REPORT if
+  // the environment clock is somehow unavailable.
+  todayStr() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return this.REPORT; } }
+  // Default filter window: year-to-date through today (both ends dynamic), so a
+  // fresh load of current-dated data is never stranded outside the window.
+  defaultDateWindow() { const t = this.todayStr(); return { from: t.slice(0, 4) + '-01-01', to: t }; }
+  // Widest [from,to] covering every loaded trade, so a reset can never leave
+  // data hidden behind the date filter. Falls back to the default window when
+  // nothing is loaded.
+  dataDateSpan() {
+    const ds = (this.state.trades || []).map(t => t.date).filter(d => d && /^\d{4}-\d{2}-\d{2}/.test(d)).sort();
+    if (!ds.length) return this.defaultDateWindow();
+    const today = this.todayStr(), maxd = ds[ds.length - 1];
+    return { from: ds[0], to: maxd > today ? maxd : today };
+  }
+
   state = this.initState();
 
   initState() {
@@ -1524,8 +1543,9 @@ class Component extends DCLogic {
     // describes only the batches making up the CURRENT dataset), history
     // survives a "Clear all data" so there is always a record of what happened.
     if (!Array.isArray(history)) history = [];
+    const dw = this.defaultDateWindow();
     const f = Object.assign({
-      dateFrom: '2026-01-01', dateTo: this.REPORT, assetClass: 'All asset classes',
+      dateFrom: dw.from, dateTo: dw.to, assetClass: 'All asset classes',
       entity: 'All entities', coverage: 'All coverage', search: '',
       groupBy: (this.props && this.props.defaultGroupBy) || 'assetClass', presetKey: 'ytd'
     }, filters || {});
@@ -2297,6 +2317,15 @@ class Component extends DCLogic {
 
   onReset = () => this.setF({ assetClass: 'All asset classes', entity: 'All entities', coverage: 'All coverage', search: '' });
 
+  // Reset used by the "no trades match" card. Like onReset, but ALSO widens the
+  // date window to span every loaded trade — because while no rows match, the
+  // whole filter bar (date pickers included) is hidden, so this button is the
+  // ONLY way out; a date-only mismatch would otherwise dead-end here forever.
+  onResetView = () => {
+    const span = this.dataDateSpan();
+    this.setF({ assetClass: 'All asset classes', entity: 'All entities', coverage: 'All coverage', search: '', dateFrom: span.from, dateTo: span.to, presetKey: '' });
+  };
+
   // Trade-blotter column chooser: layers on top of the auto-adapted `present`
   // set (colDefs.filter in renderVals) — hidden fields are stored, not shown
   // fields, so a newly-populated column appears by default instead of staying
@@ -2441,9 +2470,15 @@ class Component extends DCLogic {
   };
 
   preset = (key) => {
-    if (key === 'ytd') this.setF({ dateFrom: '2026-01-01', dateTo: this.REPORT, presetKey: 'ytd' });
-    else if (key === 'month') this.setF({ dateFrom: '2026-07-01', dateTo: this.REPORT, presetKey: 'month' });
-    else if (key === 'week') this.setF({ dateFrom: '2026-07-07', dateTo: this.REPORT, presetKey: 'week' });
+    // Upper bound is always today (dynamic); lower bound is relative to today so
+    // the presets stay correct on any calendar date, not just July 2026.
+    const to = this.todayStr();
+    if (key === 'ytd') this.setF({ dateFrom: to.slice(0, 4) + '-01-01', dateTo: to, presetKey: 'ytd' });
+    else if (key === 'month') this.setF({ dateFrom: to.slice(0, 7) + '-01', dateTo: to, presetKey: 'month' });
+    else if (key === 'week') {
+      const d = new Date(to); d.setDate(d.getDate() - 6);
+      this.setF({ dateFrom: d.toISOString().slice(0, 10), dateTo: to, presetKey: 'week' });
+    }
   };
 
   // ---------- sample data ----------
@@ -3036,7 +3071,7 @@ class Component extends DCLogic {
     // ---- active-filter accounting: drives the Reset button badge (change 4)
     // and the "no rows match" explainer (change 3). Date range counts as one
     // dimension (onReset intentionally leaves it alone — see onReset above).
-    const DEF_DATE_FROM = '2026-01-01', DEF_DATE_TO = this.REPORT;
+    const _dw = this.defaultDateWindow(), DEF_DATE_FROM = _dw.from, DEF_DATE_TO = _dw.to;
     const activeFilterParts = [];
     if (f.dateFrom !== DEF_DATE_FROM || f.dateTo !== DEF_DATE_TO) activeFilterParts.push(`Date ${f.dateFrom} → ${f.dateTo}`);
     if (f.assetClass !== 'All asset classes') activeFilterParts.push(`Asset class: ${f.assetClass}`);
@@ -3083,7 +3118,7 @@ class Component extends DCLogic {
       historyRows, historyTotal, historyCount: historyRows.length, historyEmpty: historyRows.length === 0,
       pcva, pcvaLegend, matrixCols, matrixRows, hasEntityMatrix, noEntityMatrixData,
       onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onExportGoldenCsv: this.onExportGoldenCsv, onBannerDismiss: this.onBannerDismiss,
-      onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset
+      onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset, onResetView: this.onResetView
     };
   }
 }

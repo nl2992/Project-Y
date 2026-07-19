@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blotter Desk — Guide</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#ece9e3; --card:#ffffff; --ink:#1a1c22; --ink-2:#3a3d44; --muted:#6c6f78;
+    --faint:#9a9da4; --line:#dcdad2; --line-soft:#ece9e2; --brand:#d7141a; --brand-2:#a5000d;
+    --brand-tint:#fbeceb; --chip:#f2f0ea; --good:#2f7d5b; --watch:#b07d1a; --risk:#b5442f;
+    --code-bg:#f6f4ef; --shadow:0 1px 2px rgba(20,20,20,.06), 0 8px 24px rgba(20,20,20,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --card:#1b1e24; --ink:#eef0f2; --ink-2:#c7cbd2; --muted:#9aa0a8;
+      --faint:#7c828b; --line:#2a2d34; --line-soft:#23262c; --brand:#ef5a60; --brand-2:#d7141a;
+      --brand-tint:#2a1e1e; --chip:#22252c; --good:#5cc79a; --watch:#e0b25a; --risk:#e88a78;
+      --code-bg:#101318; --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; padding:0 20px 80px;
+  }
+  .wrap{max-width:860px; margin:0 auto}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  a{color:var(--brand); text-decoration:none} a:hover{text-decoration:underline}
+
+  header.hero{
+    background:linear-gradient(180deg,var(--card),var(--card)); border:1px solid var(--line);
+    border-radius:18px; padding:40px 38px 34px; margin:34px 0 26px; box-shadow:var(--shadow);
+  }
+  .logo{width:46px;height:46px;border-radius:12px;background:var(--brand);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;letter-spacing:-1px}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--brand);margin:18px 0 6px}
+  h1{font-size:31px;line-height:1.15;letter-spacing:-.6px;margin:0 0 10px}
+  .lede{font-size:16px;color:var(--ink-2);max-width:62ch;margin:0}
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .pill{font-size:12px;font-weight:600;color:var(--muted);background:var(--chip);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+
+  h2{font-size:21px;letter-spacing:-.3px;margin:40px 0 4px;padding-top:8px}
+  h2 .n{color:var(--brand);font-variant-numeric:tabular-nums;margin-right:10px;font-size:16px;font-weight:800}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+  h3{font-size:15.5px;margin:22px 0 6px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:16px 0;box-shadow:var(--shadow)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .feat h4{margin:0 0 5px;font-size:14px}
+  .feat p{margin:0;font-size:13px;color:var(--muted);line-height:1.55}
+  .feat .ico{font-size:18px;margin-bottom:8px;display:block}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--brand);color:#fff;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
+  tbody tr:nth-child(even) td, tbody tr:nth-child(even){background:var(--line-soft)}
+  td .mono{font-size:12.5px}
+
+  ul.clean{margin:8px 0;padding-left:20px} ul.clean li{margin:4px 0}
+  .callout{border-left:3px solid var(--brand);background:var(--brand-tint);border-radius:0 10px 10px 0;padding:12px 16px;margin:16px 0;font-size:13.5px;color:var(--ink-2)}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+  .steps li{counter-increment:s;position:relative;padding:6px 0 6px 40px;font-size:14px}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:4px;width:26px;height:26px;border-radius:8px;
+    background:var(--brand);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+  .k{color:var(--brand);font-weight:700}
+
+  /* AI mock exchange */
+  .chat{margin:16px 0}
+  .bubble{border-radius:12px;padding:13px 16px;margin:10px 0;font-size:13.5px;max-width:92%}
+  .u{background:var(--chip);border:1px solid var(--line);margin-left:auto}
+  .u .who{color:var(--muted)}
+  .a{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .who{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+  .a .who{color:var(--brand)}
+  .aicards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .aic{border-radius:9px;padding:10px 12px;font-size:12px;border:1px solid var(--line)}
+  .aic .t{font-weight:700;font-size:12px;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .pos{color:var(--good)} .pos .dot{background:var(--good)}
+  .wat{color:var(--watch)} .wat .dot{background:var(--watch)}
+  .rsk{color:var(--risk)} .rsk .dot{background:var(--risk)}
+  .drill{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .drill span{font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:4px 10px;color:var(--ink-2);background:var(--chip)}
+
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="logo">W</div>
+    <div class="kicker">Wealth Solutions · Sales Trade Blotter</div>
+    <h1>Blotter Desk — a single-file trade analytics board</h1>
+    <p class="lede">One self-contained HTML file. Drop in your blotter export, and every KPI, breakdown,
+      summary table and visual is rebuilt live from your own rows — nothing is fabricated, nothing is installed,
+      and it runs offline straight from <code>file://</code>.</p>
+    <div class="pillrow">
+      <span class="pill">No install</span>
+      <span class="pill">Works offline</span>
+      <span class="pill">Upload / paste / firm feed</span>
+      <span class="pill">Light &amp; dark</span>
+      <span class="pill">Print-friendly</span>
+      <span class="pill">AI copilot</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <strong>Two builds ship side by side — same board, different memory:</strong>
+    <table>
+      <thead><tr><th>File</th><th>Persistence</th><th>Use it when…</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">Blotter Desk (standalone).html</td>
+          <td>Remembers your data in the browser and syncs to the firm backend when one is reachable.</td>
+          <td>It's your day-to-day desk board on a trusted machine.</td>
+        </tr>
+        <tr>
+          <td class="mono">Blotter Desk (standalone, no&nbsp;persistence).html</td>
+          <td><strong>Fully ephemeral</strong> — in-memory only. No browser storage, no network. A refresh wipes it clean.</td>
+          <td>Reviewing a file on a shared/locked-down machine, or a demo where nothing should linger.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- QUICK START -->
+  <h2><span class="n">01</span>Quick start</h2>
+  <p class="sub">From an empty board to a full read in under a minute.</p>
+  <ol class="steps">
+    <li>Open the HTML file in any modern browser (double-click, or drag it onto a browser tab).</li>
+    <li>Click <strong>Upload data</strong> → choose an <code>.xlsx</code>/<code>.csv</code>, or paste CSV/TSV straight into the box, then <strong>Parse &amp; import</strong>.</li>
+    <li>The board populates instantly. Use the tabs to move between the <strong>Overview</strong> and each <strong>asset-class</strong> view.</li>
+    <li>Adjust the <strong>date range</strong> and filters, or open <strong>Golden record</strong> to see and export every stored trade.</li>
+  </ol>
+  <div class="callout">
+    <strong>Column headers map themselves.</strong> Common names — <em>Trade ID, Trade Date, Notional, GNBV, Product Type, Sales Client…</em>
+    — are recognised automatically and normalised into the desk's <strong>44-column standardiser template</strong>.
+    Trades are unique on <strong>Trade ID alone</strong>: re-import the same file and duplicates are skipped, never double-counted.
+  </div>
+
+  <!-- FUNCTIONALITY -->
+  <h2><span class="n">02</span>What the board does</h2>
+  <p class="sub">Every number is derived from your imported rows.</p>
+
+  <div class="grid">
+    <div class="feat"><span class="ico">📥</span><h4>Ingest anything flat</h4><p>Upload <code>.xlsx</code>/<code>.xls</code>/<code>.csv</code> or paste delimited text. Headers auto-map; extra columns are preserved, not dropped.</p></div>
+    <div class="feat"><span class="ico">🗂️</span><h4>Golden record</h4><p>One de-duplicated store of every trade. Export it back out in the exact 44-column standardiser format — it round-trips straight back in.</p></div>
+    <div class="feat"><span class="ico">🎛️</span><h4>Filters &amp; presets</h4><p>Date range (Weekly / Monthly / YTD presets that track today), asset class, legal entity, coverage, and free-text search.</p></div>
+    <div class="feat"><span class="ico">📊</span><h4>Headline KPIs</h4><p>Total volume, PC, VA/GNBV, average reoffer, tickets and upload batches — each with a year-on-year delta.</p></div>
+    <div class="feat"><span class="ico">🧭</span><h4>Overview analytics</h4><p>Revenue breakdown by any dimension, composition by asset class, monthly trend, PC-vs-GNBV split, legal-entity × asset-class matrix, and Tier-1 × Tier-2 product mix.</p></div>
+    <div class="feat"><span class="ico">📑</span><h4>Per-desk summary tables</h4><p>Each asset-class tab reproduces the desk's Excel summary sheets: a <strong>yearly summary</strong> and a <strong>client-segment year-on-year</strong> (HK GPB vs HK External).</p></div>
+    <div class="feat"><span class="ico">🔍</span><h4>Data quality &amp; exceptions</h4><p>Flags missing trade dates, maturities before trade date, and negative notionals — so you catch bad rows before they skew a number.</p></div>
+    <div class="feat"><span class="ico">🌓</span><h4>Comfortable to read</h4><p>Light &amp; dark themes, comfortable/compact density, and a clean print layout that never clips rows.</p></div>
+  </div>
+
+  <h3>How the key figures are defined</h3>
+  <table>
+    <thead><tr><th>Figure</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>Estimated bank revenue</td><td><span class="mono">PC + VA/GNBV</span> per ticket</td></tr>
+      <tr><td>Volume</td><td><span class="mono">$ TV</span>, falling back to <span class="mono">Primary Amount</span> where trade value is absent</td></tr>
+      <tr><td>Asset class</td><td>Derived from Tier&nbsp;1 / Tier&nbsp;2 product type (Equities, FX, Credit, Rates &amp; FI…)</td></tr>
+      <tr><td>Remaining tenor</td><td>Bucketed from maturity date: Past due, ≤2W, ≤3M, ≤1Y, ≤3Y, &gt;3Y, Unknown</td></tr>
+      <tr><td>Year-on-year</td><td>Same filters, shifted back one calendar year, shown as a signed % delta</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">The two summary tables on each asset-class tab always cover <strong>all loaded history</strong> for that class,
+    independent of the date filter above them — matching how the source Excel sheets are built. A caption under each table says so.</div>
+
+  <!-- AI -->
+  <h2><span class="n">03</span>The AI copilot</h2>
+  <p class="sub">A desk analyst that reads only what's on screen and cites the numbers.</p>
+
+  <p>The copilot lives on the <strong>Overview</strong> tab and works on your <strong>current filtered view</strong> — it analyses the
+    pre-computed aggregates of exactly the rows you're looking at, grounded in the desk's own reference notes (revenue methodology,
+    product taxonomy, tenor risk, client concentration, data quality). It never invents data. There are two ways to use it:</p>
+
+  <div class="grid">
+    <div class="feat"><span class="ico">💡</span><h4>Generate insights</h4><p>One click. Returns a headline read, a few summary bullets, tone-coded cards (positive / watch / risk / neutral), suggested visuals, and clickable drill-down filters.</p></div>
+    <div class="feat"><span class="ico">📈</span><h4>Generate visual</h4><p>Describe a chart in plain English and it's built from your current rows — e.g. <em>“revenue by client”</em>, <em>“top 5 currencies by volume”</em>, <em>“tickets by tenor”</em>.</p></div>
+  </div>
+
+  <h3>Sample usage — “Generate insights”</h3>
+  <p class="sub">You've filtered to <span class="mono">Equities · YTD</span> and clicked <strong>Generate insights</strong>. A typical response:</p>
+  <div class="chat">
+    <div class="bubble u"><div class="who">You · current view</div>Equities · 2026 YTD · 4 tickets · $27.0m volume · $260k est. revenue</div>
+    <div class="bubble a">
+      <div class="who">Desk copilot</div>
+      Equities revenue is up +125% YoY on the back of two large HK GPB collars, but the book is highly concentrated.
+      <ul class="clean">
+        <li>HK GPB is 58% of segment revenue ($110k of $180k); a single client drives most of it.</li>
+        <li>Bank revenue growth (+125%) far outpaces notional growth — margin per ticket is widening.</li>
+        <li>External flow is thin this year ($9.0m notional, $70k revenue) versus last.</li>
+      </ul>
+      <div class="aicards">
+        <div class="aic pos"><div class="t"><span class="dot"></span>Momentum</div>Revenue +125% YoY, led by structured collars.</div>
+        <div class="aic wat"><div class="t"><span class="dot"></span>Watch</div>Client concentration in HK GPB — single-name dependence.</div>
+        <div class="aic rsk"><div class="t"><span class="dot"></span>Risk</div>Thin external pipeline; growth rests on two deals.</div>
+      </div>
+      <div class="drill">
+        <span>↳ Filter: Client = HSBC PB HK</span>
+        <span>↳ Filter: Asset class = Equities</span>
+      </div>
+    </div>
+  </div>
+  <p class="sub">Click a <strong>suggested drill-down</strong> chip and the board re-filters to that slice instantly — the copilot hands you the next question, not just an answer.</p>
+
+  <h3>Sample usage — “Generate visual”</h3>
+  <p class="sub">Type a request into the visual box; the copilot picks the metric, grouping and top-N and renders a chart from your filtered rows.</p>
+  <pre><span class="k">›</span> top 5 clients by revenue
+<span class="k">›</span> volume by currency
+<span class="k">›</span> tickets by remaining tenor
+<span class="k">›</span> revenue by legal entity</pre>
+  <div class="callout">
+    <strong>Offline behaviour.</strong> The copilot calls the firm's language-model endpoint. With no backend reachable
+    (e.g. opened from <code>file://</code>), it fails gracefully — you'll see a short “unable to reach the copilot” note and the
+    rest of the board keeps working normally. No feature blocks on it.
+  </div>
+
+  <!-- TIPS -->
+  <h2><span class="n">04</span>Good to know</h2>
+  <ul class="clean">
+    <li><strong>Stuck on “No trades match the current filters”?</strong> Click <strong>Reset filters &amp; show all dates</strong> — it widens the date window to span every loaded trade and clears the other filters.</li>
+    <li><strong>Nothing is fabricated.</strong> An empty board stays empty until you feed it a file, paste, or firm sync.</li>
+    <li><strong>Duplicates.</strong> Uniqueness is Trade ID alone — safe to re-import overlapping files.</li>
+    <li><strong>Export twice.</strong> <em>Export CSV</em> gives you the current filtered view; <em>Export golden record</em> gives every stored trade in the 44-column template.</li>
+    <li><strong>Self-contained.</strong> The file bundles everything it needs; the only network calls it ever makes are to the firm's own endpoints, and each degrades gracefully.</li>
+  </ul>
+
+  <footer>
+    Blotter Desk · Wealth Solutions sales-desk analytics workspace · this guide is a static HTML page and safe to open offline.
+  </footer>
+
+</div>
+</body>
+</html>
