@@ -1,5 +1,32 @@
 # Build tooling for `Blotter Desk (standalone).html`
 
+> ## ⚠️ THE DELIVERABLE IS **ONE SELF-CONTAINED HTML FILE**
+>
+> `Blotter Desk (standalone).html` is the entire product. It is handed around and opened
+> standalone inside the bank — often from `file://`, often with no network. **The board
+> itself must be self-contained**, not merely "shippable as a bundle".
+>
+> **This `tools/` directory is build source, not a runtime dependency.** Delete it and the
+> board still runs identically. Nothing in the shipped file references it.
+>
+> Therefore, when editing:
+> - **Never** add `<script src="...">` or `<link href="...">` pointing at a sibling file.
+> - **Never** split the app into modules, and **never** add a CDN, web font, or remote image.
+> - Every dependency is already inlined: SheetJS, the dc-runtime, React and react-dom live in
+>   the file as base64+gzip in the `__bundler/manifest` block. The `unpkg.com` URLs you'll see
+>   are **mapping keys to those bundled copies, not runtime fetches** — which is exactly why it
+>   boots offline. Don't "helpfully" restore them to real CDN loads.
+> - Firm endpoints (`/studio/api/...`) are the *only* real network calls, and each must
+>   **degrade gracefully** rather than be depended on.
+>
+> After any change, confirm both of these:
+> ```sh
+> # 1. no local file references
+> grep -c 'tools/\|inner_base\|support\.js\|blotter-data\.js' "Blotter Desk (standalone).html"   # -> 0
+> # 2. external URL set unchanged
+> grep -o 'https\?://[^"'"'"' <>]*' "Blotter Desk (standalone).html" | sort -u                    # -> same 4 as before
+> ```
+
 The deliverable is a **bundler**: the entire app lives as a JSON-encoded string on a
 single line inside `<script type="__bundler/template">`. You cannot usefully hand-edit
 that line, and `git diff` on the deliverable will only ever show `1 insertion, 1 deletion`

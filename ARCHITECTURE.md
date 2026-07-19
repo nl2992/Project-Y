@@ -24,6 +24,16 @@ observed is flagged as unverified rather than guessed.
 
 ## 1. Orientation — which file is current
 
+> **⚠️ Hard constraint: the deliverable is ONE self-contained HTML file.**
+> The board is handed around and opened standalone inside the bank, often from `file://` with
+> no network. All JS/CSS is inline; all libraries (SheetJS, dc-runtime, React, react-dom) are
+> inlined as base64+gzip in the `__bundler/manifest` block — the `unpkg.com` URLs in the file
+> are mapping keys to those bundled copies, **not runtime fetches**. Never add a `<script src>`
+> to a sibling file, never split the app into modules, never add a CDN or web font. The
+> `tools/` directory is **build source only** — nothing shipped references it, and deleting it
+> leaves the board working. Firm `/studio/api/...` endpoints are the only real network calls,
+> and every one must degrade gracefully. See [`tools/README.md`](tools/README.md).
+
 **[`Blotter Desk (standalone).html`](Blotter%20Desk%20(standalone).html)** is the current,
 actively-developed deliverable. It is what the last five commits touched
 (`3d09c6c`, `acc22fb`, `7676bd2`, `bdec26d`, `aa772f0`, …). If you're asked to change
