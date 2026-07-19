@@ -921,9 +921,10 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
         </div>
       </div>
 
+      <sc-if value="{{ hasEntityMatrix }}" hint-placeholder-val="{{ true }}">
       <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
-        <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Legal entity × Tier 1 product</div>
-        <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">Est. revenue heat — compulsory identity &amp; product fields</div>
+        <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Legal entity × Asset class</div>
+        <div style="font-size:11.5px;color:var(--text-faintest);margin-top:2px;margin-bottom:14px">Est. revenue heat — compulsory identity field × resolved asset class</div>
         <div style="overflow-x:auto">
           <sc-raw-table style="width:100%;border-collapse:separate;border-spacing:4px;font-size:11.5px">
             <sc-raw-thead>
@@ -949,6 +950,13 @@ WSG-26-XX9001,2026-07-10,HBAP,Equity,TRS,HKD,25000000,42000,18000" style="width:
           </sc-raw-table>
         </div>
       </div>
+      </sc-if>
+      <sc-if value="{{ noEntityMatrixData }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px var(--shadow-xs)">
+          <div style="font-size:14px;font-weight:700;letter-spacing:.2px">Legal entity × Asset class</div>
+          <div style="font-size:12.5px;color:var(--text-faintest);margin-top:10px">Not available in this view — needs at least 2 distinct asset classes.</div>
+        </div>
+      </sc-if>
 
       <!-- Product mix: Tier 1 -> Tier 2 (reuses the Top-underlyings panel's markup) -->
       <sc-if value="{{ hasProductMix }}" hint-placeholder-val="{{ true }}">
@@ -1480,13 +1488,41 @@ class Component extends DCLogic {
 
   normDate(s) { if (!s) return ''; s = String(s).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10); const d = new Date(s); return isNaN(d) ? '' : d.toISOString().slice(0, 10); }
 
+  // Asset class is resolved from Tier 3 -> Tier 2 -> Tier 1, most granular
+  // signal first, because standardisers (e.g. the Blotter Standardiser) set
+  // Tier 1 to a constant ("Markets") for every asset class and push the real
+  // taxonomy down into Tier 2/Tier 3. Keyword-based (not a hardcoded lookup
+  // of exact strings) so ad-hoc CSVs that already put Equities/Credit/FX/
+  // "Rates & FI" directly on Tier 1 keep behaving exactly as before — those
+  // strings just fall through every regex here and are returned verbatim by
+  // the final fallback.
   assetClassOf(m) {
-    const t1 = (m.tier1_product_type || '').toLowerCase(), t2 = (m.tier2_product_type || '').toLowerCase();
-    if (t1.includes('equity')) return 'Equities';
-    if (t2.includes('fx') || t1.includes('fx')) return 'FX';
-    if (t1.includes('credit') || t2.includes('credit')) return 'Credit';
-    if (t1.includes('rate') || t2.includes('rate') || t1.includes('structured fi') || t1.includes('rates')) return 'Rates & FI';
-    return m.tier1_product_type || 'Unclassified';
+    const t3Raw = String(m.tier3_product_type || '').trim();
+    const t3Raw2 = t3Raw.toUpperCase() === 'UNCLASSIFIED_TIER3' ? '' : t3Raw; // ignore placeholder
+    const t2Raw = String(m.tier2_product_type || '').trim();
+    const t1Raw = String(m.tier1_product_type || '').trim();
+    // "equit" (not just "equity") so the ad-hoc CSV's plural "Equities" is
+    // caught by the keyword branch directly, at whichever tier it appears —
+    // otherwise it would fall through to the raw-value fallback below, which
+    // now prefers the most granular *populated* tier over Tier 1 and could
+    // surface a non-empty Tier 2 string instead of "Equities" when Tier 2
+    // doesn't itself match a keyword. See regression test in VERIFY step 6.
+    const isEquity = s => /equit|collar|\btrs\b|total return swap/.test(s);
+    const isFx = s => /\bfx\b/.test(s);
+    const isCredit = s => /credit|repack/.test(s);
+    const isRate = s => /\brates?\b|structured fi/.test(s);
+    for (const raw of [t3Raw2, t2Raw, t1Raw]) {
+      const s = raw.toLowerCase();
+      if (!s) continue;
+      if (isEquity(s)) return 'Equities';
+      if (isFx(s)) return 'FX';
+      if (isCredit(s)) return 'Credit';
+      if (isRate(s)) return 'Rates & FI';
+    }
+    // Nothing matched a keyword — fall back to the most granular populated
+    // tier's raw value rather than always Tier 1 (which may be a constant
+    // like "Markets" and carry no information).
+    return t3Raw2 || t2Raw || t1Raw || 'Unclassified';
   }
   tenorBucket(m) {
     if (!m.maturity_date) return 'Unknown';
@@ -1507,6 +1543,12 @@ class Component extends DCLogic {
     return Object.assign({}, m, {
       id: m.trade_id || '', date, year: date ? +date.slice(0, 4) : 0, monthN: date ? +date.slice(5, 7) : 0,
       pc_usd: pc, va_gnbv_usd: va, primary_amount: pa, tv_usd: tv, price: this.num(m.price),
+      // Security wins when both are present; Ticker (the standardiser's
+      // underlying field) only fills in when Security is blank.
+      security: m.security || m.ticker || '',
+      // Platform wins when both are present; FX Platform Description only
+      // fills in when Platform is blank (see ALIASES comment above).
+      platform: m.platform || m.fx_platform_description || '',
       bankRev: pc + va, volumeUsd: tv || pa,
       assetClass: this.assetClassOf(m), tenorBucket: this.tenorBucket(m),
       book: m.book || m.risk_book || ''
@@ -1533,17 +1575,47 @@ class Component extends DCLogic {
     pcusd: 'pc_usd', pc: 'pc_usd', pcodeusd: 'pc_usd',
     vagnbvusd: 'va_gnbv_usd', gnbv: 'va_gnbv_usd', va: 'va_gnbv_usd', vagnbv: 'va_gnbv_usd',
     revenueccy: 'revenue_ccy',
-    tvusd: 'tv_usd', volume: 'tv_usd', volumeusd: 'tv_usd', tradevalue: 'tv_usd',
+    tvusd: 'tv_usd', volume: 'tv_usd', volumeusd: 'tv_usd', tradevalue: 'tv_usd', tv: 'tv_usd',
     maturitydate: 'maturity_date', maturity: 'maturity_date',
     tfxflag: 'tfx_flag', tfx: 'tfx_flag',
     buysell: 'buy_sell', side: 'buy_sell', direction: 'buy_sell',
     security: 'security', underlying: 'security', instrument: 'security', description: 'security',
+    // Ticker carries the underlying in the standardiser template. It must
+    // never clobber a real Security value when both are present — see
+    // deriveTrade(), which prefers m.security and only falls back to
+    // m.ticker when Security is blank. Kept as a distinct field here (not
+    // aliased straight onto 'security') so column order in the source file
+    // can't cause one to overwrite the other during parsing.
+    ticker: 'ticker',
     issuer: 'issuer',
     isincode: 'isin_code', isin: 'isin_code',
     salesclient: 'sales_client', client: 'sales_client', counterparty: 'sales_client', customer: 'sales_client',
-    platform: 'platform', fxplatformdescription: 'platform',
+    // Platform wins when both are present; FX Platform Description (a
+    // separate template column) is kept under its own field and only used
+    // as a fallback in deriveTrade — aliasing both straight onto 'platform'
+    // let the later, often-blank column silently overwrite a real Platform
+    // value during header mapping.
+    platform: 'platform', fxplatformdescription: 'fx_platform_description',
     book: 'book', riskbook: 'risk_book', trader: 'trader',
-    treatsacronym: 'treats_acronym', treats: 'treats_acronym'
+    treatsacronym: 'treats_acronym', treats: 'treats_acronym',
+    // Pass-through aliases for standardiser-template fields the board
+    // otherwise dropped (mapHeader would've kept them under an unpredictable
+    // stripped key like "salesteamcoverage" that no dimension reads).
+    sitecode: 'site_code',
+    salesteamcoverage: 'sales_team_coverage',
+    salespersoncountry: 'sales_person_country',
+    secondaryccy: 'secondary_ccy',
+    ccypc: 'ccy_pc',
+    pccode: 'pc_code',
+    commissioncode: 'commission_code',
+    btbtradesite: 'btb_trade_site',
+    flowvalue: 'flow_value',
+    liquidityreserve: 'liquidity_reserve',
+    cva: 'cva',
+    fva: 'fva',
+    salesclientsector: 'sales_client_sector',
+    salesclientcountry: 'sales_client_country',
+    salesclienttype: 'sales_client_type'
   };
   mapHeader(h) { const k = String(h).toLowerCase().replace(/[^a-z0-9]/g, ''); return this.ALIASES[k] || k; }
 
@@ -2235,13 +2307,39 @@ class Component extends DCLogic {
       { key: 'assetClass', label: 'Asset class', fn: t => t.assetClass },
       { key: 'tier1_product_type', label: 'Product \u00b7 Tier 1', fn: t => t.tier1_product_type || '\u2013' },
       { key: 'tier2_product_type', label: 'Product \u00b7 Tier 2', fn: t => t.tier2_product_type || '\u2013' },
+      { key: 'tier3_product_type', label: 'Product \u00b7 Tier 3', fn: t => t.tier3_product_type || '\u2013' },
       { key: 'legal_entity', label: 'Legal entity', fn: t => t.legal_entity || '\u2013' },
       { key: 'primary_ccy', label: 'Currency', fn: t => t.primary_ccy || '\u2013' },
       { key: 'sales_client', label: 'Client', fn: t => t.sales_client || '\u2013' },
       { key: 'tenorBucket', label: 'Remaining tenor', fn: t => t.tenorBucket },
       { key: 'treats_acronym', label: 'TREATs acronym', fn: t => t.treats_acronym || '\u2013' },
-      { key: 'book', label: 'Book', fn: t => t.book || '\u2013' }
+      { key: 'book', label: 'Book', fn: t => t.book || '\u2013' },
+      { key: 'trader', label: 'Trader', fn: t => t.trader || '\u2013' },
+      { key: 'risk_book', label: 'Risk Book', fn: t => t.risk_book || '\u2013' },
+      { key: 'sales_client_sector', label: 'Client sector', fn: t => t.sales_client_sector || '\u2013' },
+      { key: 'sales_client_country', label: 'Client country', fn: t => t.sales_client_country || '\u2013' },
+      { key: 'sales_client_type', label: 'Client type', fn: t => t.sales_client_type || '\u2013' },
+      { key: 'sales_person_country', label: 'Sales person country', fn: t => t.sales_person_country || '\u2013' },
+      { key: 'platform', label: 'Platform', fn: t => t.platform || '\u2013' }
     ];
+  }
+  // Only offer a dimension in the group-by selector if it carries information
+  // in the currently loaded trades \u2014 at least 2 distinct non-blank values.
+  // A dimension that's absent (ad-hoc CSV lacking it) or constant (Tier 1 =
+  // "Markets" for every row from the standardiser) is filtered out. Asset
+  // class is always kept so the selector is never empty.
+  availableGroupByDefs() {
+    const trades = this.state.trades;
+    return this.groupByDefs().filter(d => {
+      if (d.key === 'assetClass') return true;
+      const vals = new Set();
+      for (const t of trades) {
+        const v = d.fn(t);
+        if (v && v !== '\u2013') vals.add(v);
+        if (vals.size >= 2) return true;
+      }
+      return false;
+    });
   }
   shiftYear(dstr, n) { if (!dstr) return dstr; return (parseInt(dstr.slice(0, 4)) + n) + dstr.slice(4); }
   scope(trades, f, useDate) {
@@ -2348,8 +2446,13 @@ class Component extends DCLogic {
     ];
 
     // group-by breakdown
-    const gd = this.groupByDefs().find(g => g.key === f.groupBy) || this.groupByDefs()[0];
-    const groupByOptions = this.groupByDefs().map(g => ({ key: g.key, label: g.label }));
+    // Group-by selector only offers dimensions carrying information in this
+    // dataset (see availableGroupByDefs). If the saved selection points at a
+    // dimension that's no longer offered (e.g. it was constant/empty), fall
+    // back to Asset class rather than rendering an empty grouping.
+    const availGroupByDefs = this.availableGroupByDefs();
+    const gd = availGroupByDefs.find(g => g.key === f.groupBy) || availGroupByDefs.find(g => g.key === 'assetClass') || availGroupByDefs[0];
+    const groupByOptions = availGroupByDefs.map(g => ({ key: g.key, label: g.label }));
     const curAgg = this.aggBy(cur, gd.fn);
     const prvMap = new Map(this.aggBy(prv, gd.fn).map(g => [g.key, g]));
     curAgg.sort((a, b) => b.rev - a.rev);
@@ -2373,18 +2476,24 @@ class Component extends DCLogic {
     const mMax = Math.max(1, ...mKeys.map(k => mMap.get(k)));
     const months = mKeys.map(k => ({ label: MN[k - 1], hW: Math.max(2, mMap.get(k) / mMax * 100).toFixed(1), revText: this.fmtM(mMap.get(k)) }));
 
-    // mini panels: currency, tenor, coverage
+    // mini panels: currency, tenor, coverage. A panel whose dimension
+    // resolves to fewer than 2 distinct non-blank values (empty or constant
+    // in this view) carries no information, so it's dropped from the list \u2014
+    // sc-for over miniPanels then simply renders one fewer card.
     const mini = (title, keyFn, metric) => {
-      const agg = this.aggBy(cur, keyFn).sort((a, b) => (metric === 'vol' ? b.vol - a.vol : b.rev - a.rev)).slice(0, 6);
-      const mx = Math.max(1, ...agg.map(g => metric === 'vol' ? g.vol : g.rev));
-      return { title, rows: agg.map(g => ({ key: g.key, valText: metric === 'vol' ? this.fmtUsd(g.vol) : this.fmtUsd(g.rev), pctW: Math.max(2, (metric === 'vol' ? g.vol : g.rev) / mx * 100).toFixed(1) })) };
+      const agg = this.aggBy(cur, keyFn).sort((a, b) => (metric === 'vol' ? b.vol - a.vol : b.rev - a.rev));
+      const distinctNonBlank = agg.filter(g => g.key && g.key !== '\u2013').length;
+      if (distinctNonBlank < 2) return null;
+      const top = agg.slice(0, 6);
+      const mx = Math.max(1, ...top.map(g => metric === 'vol' ? g.vol : g.rev));
+      return { title, rows: top.map(g => ({ key: g.key, valText: metric === 'vol' ? this.fmtUsd(g.vol) : this.fmtUsd(g.rev), pctW: Math.max(2, (metric === 'vol' ? g.vol : g.rev) / mx * 100).toFixed(1) })) };
     };
     const miniPanels = [
       mini('Revenue by coverage', t => t.salesperson_coverage || '\u2013', 'rev'),
       mini('Volume by currency', t => t.primary_ccy || '\u2013', 'vol'),
       mini('Revenue by remaining tenor', t => t.tenorBucket, 'rev'),
       mini('Revenue by client', t => t.sales_client || '\u2013', 'rev')
-    ];
+    ].filter(Boolean);
 
     // cumulative revenue build (YTD) \u2014 rising cumulative column chart (div-based)
     let cumTrend = { bars: [], totalText: '' };
@@ -2634,17 +2743,25 @@ class Component extends DCLogic {
     const totPc = this.sum(cur, t => t.pc_usd), totVa = this.sum(cur, t => t.va_gnbv_usd), totBoth = Math.max(1, totPc + totVa);
     const pcvaLegend = { pcText: this.fmtUsd(totPc), vaText: this.fmtUsd(totVa), pcPct: (totPc / totBoth * 100).toFixed(0) + '%', vaPct: (totVa / totBoth * 100).toFixed(0) + '%' };
 
-    // ---- legal entity x tier 1 product revenue matrix (compulsory identity + product fields) ----
-    const mCols = [...new Set(cur.map(t => t.tier1_product_type).filter(Boolean))].sort();
+    // ---- legal entity x asset class revenue matrix (compulsory identity field
+    // x the resolved asset-class dimension). Uses assetClassOf's resolved
+    // class rather than raw Tier 1 \u2014 Tier 1 is "Markets" for every row from
+    // the standardiser, which would degenerate this to a single column. ----
+    const mCols = [...new Set(cur.map(t => t.assetClass).filter(Boolean))].sort();
     const mEnts = [...new Set(cur.map(t => t.legal_entity).filter(Boolean))].sort();
     const cellMap = {}; let cellMax = 1;
-    cur.forEach(t => { const k = t.legal_entity + '|' + t.tier1_product_type; cellMap[k] = (cellMap[k] || 0) + t.bankRev; if (cellMap[k] > cellMax) cellMax = cellMap[k]; });
+    cur.forEach(t => { const k = t.legal_entity + '|' + t.assetClass; cellMap[k] = (cellMap[k] || 0) + t.bankRev; if (cellMap[k] > cellMax) cellMax = cellMap[k]; });
     const matrixCols = mCols;
     const matrixRows = mEnts.map(e => {
       const cells = mCols.map(c => { const v = cellMap[e + '|' + c] || 0; const a = v ? Math.min(0.88, 0.12 + v / cellMax * 0.76) : 0; return { text: v ? this.fmtUsd(v) : '\u2013', bg: `rgba(215,20,26,${a.toFixed(3)})`, color: a > 0.5 ? 'var(--on-brand)' : (v ? 'var(--text-3)' : 'var(--text-disabled)') }; });
       const tot = mCols.reduce((s, c) => s + (cellMap[e + '|' + c] || 0), 0);
       return { entity: e, cells, totText: this.fmtUsd(tot) };
     });
+    // Degenerates to a single-bar card when there's only one asset class (or
+    // no entities) in view \u2014 hide it rather than render a 100%-single-column
+    // heat map, matching the Product mix panel's empty-state pattern below.
+    const hasEntityMatrix = mCols.length >= 2 && mEnts.length >= 1;
+    const noEntityMatrixData = !hasEntityMatrix;
 
     // ---- AI / RAG visual layer ----
     const ai = this.state.ai, resp = ai.resp;
@@ -2721,7 +2838,7 @@ class Component extends DCLogic {
       activeFilterCount, activeFiltersText, resetLabel, resetBg, resetFg, resetBorder,
       goldenColumns, goldenRows, goldenShown, goldenTotal: trades.length, goldenBatches: this.state.batches.length, goldenLoaded: this.state.loadedAt, dedupRule: 'Trade ID (exact match, case/whitespace-insensitive)',
       historyRows, historyTotal, historyCount: historyRows.length, historyEmpty: historyRows.length === 0,
-      pcva, pcvaLegend, matrixCols, matrixRows,
+      pcva, pcvaLegend, matrixCols, matrixRows, hasEntityMatrix, noEntityMatrixData,
       onThemeToggle: this.onThemeToggle, onUploadToggle: this.onUploadToggle, onFile: this.onFile, onPasteChange: this.onPasteChange, onPasteSubmit: this.onPasteSubmit, onClear: this.onClear, onSync: this.syncFromFirm, onExportCsv: this.onExportCsv, onBannerDismiss: this.onBannerDismiss,
       onDateFrom: this.onDateFrom, onDateTo: this.onDateTo, onAsset: this.onAsset, onEntity: this.onEntity, onCoverage: this.onCoverage, onSearch: this.onSearch, onGroupBy: this.onGroupBy, onReset: this.onReset
     };
