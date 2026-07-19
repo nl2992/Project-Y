@@ -2547,7 +2547,13 @@ class Component extends DCLogic {
       else if (t.maturity_date && t.maturity_date < t.trade_date) qa.push({ sev: 'WARN', type: 'maturity', record: t.id, message: 'Maturity date is earlier than trade date.' });
       if (t.primary_amount < 0) qa.push({ sev: 'WARN', type: 'neg', record: t.id, message: 'Primary amount is negative.' });
     });
-    if (qa.length < 3) qa.push({ sev: 'INFO', type: 'fx', record: 'USDHKD', message: 'Equity TRS notionals converted to USD at 7.8412 for headline volume.' });
+    // NOTE: an 'INFO' row used to be padded in here claiming "Equity TRS notionals
+    // converted to USD at 7.8412 for headline volume." No such conversion exists in
+    // this board — there is no FX feed, no rate, and no conversion maths — so the
+    // message asserted a control that was not being applied. Removed 2026-07-19.
+    // Non-USD notionals are currently summed at face value alongside USD ones.
+    // If FX conversion is implemented, raise the QA row from the real rate actually
+    // used, not a literal.
     const sevStyle = { WARN: { bg: 'var(--accent-tint)', fg: 'var(--accent)' }, INFO: { bg: 'var(--info-tint)', fg: 'var(--info)' } };
     const qaList = qa.slice(0, 8).map(q => Object.assign({ record: q.record, message: q.message, sev: q.sev }, sevStyle[q.sev]));
 
